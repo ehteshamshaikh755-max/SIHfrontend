@@ -1,0 +1,31 @@
+:root {
+  /* ---- Color: civic-ledger palette ---- */
+  --ink: #0f1729;
+  --ink-soft: #364057;
+  --paper: #f4f6fa;
+  --surface: #ffffff;
+  --navy: #16244a;
+  --navy-deep: #0c1630;
+  --saffron: #f2a93b;
+  --saffron-deep: #d98c1c;
+  --teal: #0e9488;
+  --teal-soft: #e3f4f1;
+  --coral: #e3543d;
+  --coral-soft: #fbe8e5;
+  --line: #dde3ee;
+  --line-soft: #eaeef5;
+  --muted: #6b7690;
+
+  /* ---- Type ---- */
+  --font-display: 'Fraunces', Georgia, serif;
+  --font-body: 'Inter', -apple-system, BlinkMacSystemFont, sans-serif;
+  --font-mono: 'IBM Plex Mono', 'SFMono-Regular', Menlo, monospace;
+
+  /* ---- Radius / shadow ---- */
+  --r-sm: 6px;
+  --r-md: 10px;
+  --r-lg: 16px;
+  --shadow-sm: 0 1px 2px rgba(15, 23, 41, 0.06);
+  --shadow-md: 0 4px 16px rgba(15, 23, 41, 0.08);
+  --shadow-lg: 0 12px 32px rgba(15, 23, 41, 0.14);
+}
