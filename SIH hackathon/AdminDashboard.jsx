@@ -22,6 +22,56 @@ export default function AdminDashboard() {
   const [annLoading, setAnnLoading] = useState(false);
   const [annMessage, setAnnMessage] = useState('');
 
+  // ---- Pending trainer approvals ----
+  const [pendingTrainers, setPendingTrainers] = useState([]);
+  const [trainerActionLoading, setTrainerActionLoading] = useState(false);
+
+  const fetchPendingTrainers = useCallback(async () => {
+    try {
+      const res = await fetch(`${API_URL}/admin/trainers/pending`, {
+        headers: { Authorization: `Bearer ${token}` },
+      });
+      const data = await res.json();
+      if (res.ok) setPendingTrainers(data);
+    } catch {
+      // non-critical, ignore
+    }
+  }, [token]);
+
+  useEffect(() => { fetchPendingTrainers(); }, [fetchPendingTrainers]);
+
+  async function approveTrainer(id) {
+    setTrainerActionLoading(true);
+    try {
+      const res = await fetch(`${API_URL}/admin/trainers/${id}/approve`, {
+        method: 'PATCH',
+        headers: { Authorization: `Bearer ${token}` },
+      });
+      if (!res.ok) throw new Error('Failed to approve trainer');
+      await fetchPendingTrainers();
+    } catch (err) {
+      alert(err.message);
+    } finally {
+      setTrainerActionLoading(false);
+    }
+  }
+
+  async function rejectTrainer(id) {
+    setTrainerActionLoading(true);
+    try {
+      const res = await fetch(`${API_URL}/admin/trainers/${id}/reject`, {
+        method: 'PATCH',
+        headers: { Authorization: `Bearer ${token}` },
+      });
+      if (!res.ok) throw new Error('Failed to reject trainer');
+      await fetchPendingTrainers();
+    } catch (err) {
+      alert(err.message);
+    } finally {
+      setTrainerActionLoading(false);
+    }
+  }
+
   async function postAnnouncement() {
     if (!annTitle.trim() || !annBody.trim()) {
       setAnnMessage('Please fill in both title and message.');
@@ -151,6 +201,24 @@ export default function AdminDashboard() {
           </button>
         </div>
       </div>
+
+      {pendingTrainers.length > 0 && (
+        <div className="card card-pad" style={{ marginBottom: 20 }}>
+          <h3 style={{ fontSize: 15, marginBottom: 12 }}>Pending Trainer Approvals</h3>
+          {pendingTrainers.map((t) => (
+            <div key={t._id} className="flex justify-between items-center" style={{ padding: '9px 0', borderBottom: '1px dashed var(--line)' }}>
+              <div>
+                <div style={{ fontWeight: 600, fontSize: 13.5 }}>{t.name}</div>
+                <div className="small muted">{t.email}{t.dept ? ` · ${t.dept}` : ''}</div>
+              </div>
+              <div className="flex gap-8">
+                <button className="btn btn-danger btn-sm" disabled={trainerActionLoading} onClick={() => rejectTrainer(t._id)}>Reject</button>
+                <button className="btn btn-accent btn-sm" disabled={trainerActionLoading} onClick={() => approveTrainer(t._id)}>Approve</button>
+              </div>
+            </div>
+          ))}
+        </div>
+      )}
 
       <div className="tabs">
         {['Pending Approval', 'Approved', 'Rejected', 'Draft', 'All'].map((s) => (
