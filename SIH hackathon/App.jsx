@@ -2,6 +2,9 @@ import React from 'react';
 import { HashRouter, Routes, Route, Navigate } from 'react-router-dom';
 import { AppProvider, useApp } from './AppContext';
 import AppLayout from './AppLayout';
+import Login from './Login';
+import Home from './Home';
+import Profile from './Profile';
 
 import MyCourses from './MyCourses';
 import CreateCourse from './CreateCourse';
@@ -24,43 +27,69 @@ import Leaderboard from './Leaderboard';
 import Certificates from './Certificates';
 import Skills from './Skills';
 
+// Sends a logged-in user to their role's home screen.
 function RoleHome() {
   const { role } = useApp();
   if (role === 'trainer') return <Navigate to="/trainer/courses" replace />;
   if (role === 'admin') return <Navigate to="/admin/dashboard" replace />;
-  return <Navigate to="/courses" replace />;
+  if (role === 'trainee') return <Navigate to="/home" replace />;
+  return <Navigate to="/login" replace />;
+}
+
+// Wraps a route: if not logged in, bounce to /login.
+// If allowedRoles is given, also bounce non-matching roles back to their own home.
+function ProtectedRoute({ children, allowedRoles }) {
+  const { user, role } = useApp();
+  if (!user) return <Navigate to="/login" replace />;
+  if (allowedRoles && !allowedRoles.includes(role)) return <RoleHome />;
+  return children;
 }
 
 function Shell() {
+  const { user } = useApp();
+
   return (
-    <AppLayout>
-      <Routes>
-        <Route path="/" element={<RoleHome />} />
+    <Routes>
+      <Route path="/login" element={user ? <RoleHome /> : <Login />} />
 
-        <Route path="/trainer/courses" element={<MyCourses />} />
-        <Route path="/trainer/create" element={<CreateCourse />} />
-        <Route path="/trainer/credits" element={<ContributionCredits />} />
-        <Route path="/trainer/analytics" element={<TrainerAnalytics />} />
+      <Route
+        path="/*"
+        element={
+          <ProtectedRoute>
+            <AppLayout>
+              <Routes>
+                <Route path="/" element={<RoleHome />} />
+                <Route path="/profile" element={<Profile />} />
 
-        <Route path="/admin/dashboard" element={<AdminDashboard />} />
-        <Route path="/admin/analytics" element={<AdminAnalytics />} />
+                <Route path="/home" element={<ProtectedRoute allowedRoles={['trainee']}><Home /></ProtectedRoute>} />
+                <Route path="/trainer/courses" element={<ProtectedRoute allowedRoles={['trainer']}><MyCourses /></ProtectedRoute>} />
+                <Route path="/trainer/create" element={<ProtectedRoute allowedRoles={['trainer']}><CreateCourse /></ProtectedRoute>} />
+                <Route path="/trainer/credits" element={<ProtectedRoute allowedRoles={['trainer']}><ContributionCredits /></ProtectedRoute>} />
+                <Route path="/trainer/analytics" element={<ProtectedRoute allowedRoles={['trainer']}><TrainerAnalytics /></ProtectedRoute>} />
 
-        <Route path="/courses" element={<CourseListing />} />
-        <Route path="/courses/:id" element={<CourseDetails />} />
-        <Route path="/learn/:courseId/:lessonId" element={<LearningPage />} />
-        <Route path="/quiz/:courseId" element={<Quiz />} />
-        <Route path="/complete/:courseId" element={<CourseCompletion />} />
+                <Route path="/admin/dashboard" element={<ProtectedRoute allowedRoles={['admin']}><AdminDashboard /></ProtectedRoute>} />
+                <Route path="/admin/analytics" element={<ProtectedRoute allowedRoles={['admin']}><AdminAnalytics /></ProtectedRoute>} />
 
-        <Route path="/credits" element={<CreditWallet />} />
-        <Route path="/rewards" element={<Rewards />} />
-        <Route path="/achievements" element={<Achievements />} />
-        <Route path="/leaderboard" element={<Leaderboard />} />
-        <Route path="/certificates" element={<Certificates />} />
-        <Route path="/my-skills" element={<Skills />} />
+                <Route path="/courses" element={<ProtectedRoute allowedRoles={['trainee']}><CourseListing /></ProtectedRoute>} />
+                <Route path="/courses/:id" element={<ProtectedRoute allowedRoles={['trainee']}><CourseDetails /></ProtectedRoute>} />
+                <Route path="/learn/:courseId/:lessonId" element={<ProtectedRoute allowedRoles={['trainee']}><LearningPage /></ProtectedRoute>} />
+                <Route path="/quiz/:courseId" element={<ProtectedRoute allowedRoles={['trainee']}><Quiz /></ProtectedRoute>} />
+                <Route path="/complete/:courseId" element={<ProtectedRoute allowedRoles={['trainee']}><CourseCompletion /></ProtectedRoute>} />
 
-        <Route path="*" element={<RoleHome />} />
-      </Routes>
-    </AppLayout>
+                <Route path="/credits" element={<ProtectedRoute allowedRoles={['trainee']}><CreditWallet /></ProtectedRoute>} />
+                <Route path="/rewards" element={<ProtectedRoute allowedRoles={['trainee']}><Rewards /></ProtectedRoute>} />
+                <Route path="/achievements" element={<ProtectedRoute allowedRoles={['trainee']}><Achievements /></ProtectedRoute>} />
+                <Route path="/leaderboard" element={<Leaderboard />} />
+                <Route path="/certificates" element={<ProtectedRoute allowedRoles={['trainee']}><Certificates /></ProtectedRoute>} />
+                <Route path="/my-skills" element={<ProtectedRoute allowedRoles={['trainee']}><Skills /></ProtectedRoute>} />
+
+                <Route path="*" element={<RoleHome />} />
+              </Routes>
+            </AppLayout>
+          </ProtectedRoute>
+        }
+      />
+    </Routes>
   );
 }
 

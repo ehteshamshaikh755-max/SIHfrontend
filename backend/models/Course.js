@@ -27,6 +27,15 @@ const reviewSchema = new mongoose.Schema(
   { _id: false }
 );
 
+const questionSchema = new mongoose.Schema(
+  {
+    q: { type: String, required: true },
+    options: [String],
+    answer: { type: Number, required: true }, // index of correct option
+  },
+  { _id: false }
+);
+
 const courseSchema = new mongoose.Schema(
   {
     title: { type: String, required: true },
@@ -53,6 +62,8 @@ const courseSchema = new mongoose.Schema(
     modules: [moduleSchema],
     skillsGained: [String],
     reviews: [reviewSchema],
+    quizQuestions: [questionSchema],
+    passingScorePct: { type: Number, default: 60 },
   },
   { timestamps: true }
 );

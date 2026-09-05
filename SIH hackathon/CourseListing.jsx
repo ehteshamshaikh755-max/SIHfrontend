@@ -1,35 +1,64 @@
-import React, { useMemo, useState } from 'react';
+import React, { useEffect, useMemo, useState, useCallback } from 'react';
 import { useApp } from './AppContext';
 import { CATEGORIES, DIFFICULTIES } from './mockData';
 import { CourseCard, ProgressBar, EmptyState } from './common';
 
+const API_URL = 'https://capacity-connect-backend-wh7n.onrender.com/api';
+
 export default function CourseListing() {
-  const { courses, enrollments } = useApp();
+  const { token } = useApp();
+  const [courses, setCourses] = useState([]);
+  const [enrollments, setEnrollments] = useState([]);
+  const [loading, setLoading] = useState(true);
+  const [error, setError] = useState('');
+
   const [q, setQ] = useState('');
   const [cat, setCat] = useState('All');
   const [diff, setDiff] = useState('All');
   const [sort, setSort] = useState('Popular');
 
-  const approved = courses.filter((c) => c.status === 'Approved');
+  const fetchData = useCallback(async () => {
+    setLoading(true);
+    setError('');
+    try {
+      const [coursesRes, enrollRes] = await Promise.all([
+        fetch(`${API_URL}/courses`),
+        fetch(`${API_URL}/enrollments/mine`, { headers: { Authorization: `Bearer ${token}` } }),
+      ]);
+      const coursesData = await coursesRes.json();
+      const enrollData = await enrollRes.json();
+      if (!coursesRes.ok) throw new Error(coursesData.message || 'Failed to load courses');
+      setCourses(coursesData);
+      setEnrollments(enrollRes.ok ? enrollData : []);
+    } catch (err) {
+      setError(err.message);
+    } finally {
+      setLoading(false);
+    }
+  }, [token]);
+
+  useEffect(() => { fetchData(); }, [fetchData]);
+
+  const enrollmentFor = (courseId) => enrollments.find((e) => e.course?._id === courseId);
 
   const filtered = useMemo(() => {
-    let list = approved.filter((c) =>
+    let list = courses.filter((c) =>
       (cat === 'All' || c.category === cat) &&
       (diff === 'All' || c.difficulty === diff) &&
-      (q.trim() === '' || c.title.toLowerCase().includes(q.toLowerCase()) || c.trainer.toLowerCase().includes(q.toLowerCase()))
+      (q.trim() === '' || c.title.toLowerCase().includes(q.toLowerCase()) || (c.trainer?.name || '').toLowerCase().includes(q.toLowerCase()))
     );
-    if (sort === 'Popular') list = [...list].sort((a, b) => b.learners - a.learners);
-    if (sort === 'Rating') list = [...list].sort((a, b) => b.rating - a.rating);
-    if (sort === 'Newest') list = [...list].sort((a, b) => (b.submittedOn || '').localeCompare(a.submittedOn || ''));
+    if (sort === 'Popular') list = [...list].sort((a, b) => (b.learners || 0) - (a.learners || 0));
+    if (sort === 'Rating') list = [...list].sort((a, b) => (b.rating || 0) - (a.rating || 0));
+    if (sort === 'Newest') list = [...list].sort((a, b) => new Date(b.createdAt || 0) - new Date(a.createdAt || 0));
     return list;
-  }, [approved, q, cat, diff, sort]);
+  }, [courses, q, cat, diff, sort]);
 
   return (
     <div className="page">
       <div className="page-head">
         <div>
           <h1>Browse Courses</h1>
-          <p className="desc">{approved.length} approved courses across {CATEGORIES.length} skill areas.</p>
+          <p className="desc">{courses.length} approved courses across {CATEGORIES.length} skill areas.</p>
         </div>
       </div>
 
@@ -54,22 +83,29 @@ export default function CourseListing() {
         </div>
       </div>
 
-      {filtered.length === 0 && <EmptyState icon="🔎" title="No courses match your filters" desc="Try a different category, difficulty, or search term." />}
+      {loading && <p className="small muted">Loading courses…</p>}
+      {error && <p className="small" style={{ color: 'var(--coral)' }}>{error}</p>}
 
-      <div className="grid grid-3">
-        {filtered.map((c) => {
-          const enrolled = enrollments[c.id];
-          return (
-            <CourseCard key={c.id} course={c} linkTo={`/courses/${c.id}`}
-              icon={enrolled ? <ProgressBar pct={enrolled.progress} /> : null}
-              footer={
-                <button className="btn btn-block btn-sm" style={{ background: enrolled ? 'var(--teal-soft)' : 'var(--navy-deep)', color: enrolled ? 'var(--teal)' : '#fff' }}>
-                  {enrolled ? (enrolled.progress === 100 ? '✓ Completed — Review' : `Continue (${enrolled.progress}%)`) : 'Enroll'}
-                </button>
-              } />
-          );
-        })}
-      </div>
+      {!loading && !error && filtered.length === 0 && (
+        <EmptyState icon="🔎" title="No courses match your filters" desc="Try a different category, difficulty, or search term." />
+      )}
+
+      {!loading && !error && filtered.length > 0 && (
+        <div className="grid grid-3">
+          {filtered.map((c) => {
+            const enrolled = enrollmentFor(c._id);
+            return (
+              <CourseCard key={c._id} course={{ ...c, id: c._id, trainer: c.trainer?.name || 'Unknown' }} linkTo={`/courses/${c._id}`}
+                icon={enrolled ? <ProgressBar pct={enrolled.progressPct} /> : null}
+                footer={
+                  <button className="btn btn-block btn-sm" style={{ background: enrolled ? 'var(--teal-soft)' : 'var(--navy-deep)', color: enrolled ? 'var(--teal)' : '#fff' }}>
+                    {enrolled ? (enrolled.progressPct === 100 ? '✓ Completed — Review' : `Continue (${enrolled.progressPct}%)`) : 'Enroll'}
+                  </button>
+                } />
+            );
+          })}
+        </div>
+      )}
     </div>
   );
 }

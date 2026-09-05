@@ -1,6 +1,8 @@
-import React from 'react';
-import { NavLink, useLocation } from 'react-router-dom';
+import React, { useEffect, useState } from 'react';
+import { NavLink, useLocation, useNavigate } from 'react-router-dom';
 import { useApp } from './AppContext';
+
+const API_URL = 'https://capacity-connect-backend-wh7n.onrender.com/api';
 
 const NAV = {
   trainer: [
@@ -22,6 +24,7 @@ const NAV = {
   ],
   trainee: [
     { section: 'Learning', links: [
+      { to: '/home', label: 'Home', ic: '🏠' },
       { to: '/courses', label: 'Browse Courses', ic: '🔎' },
       { to: '/my-skills', label: 'My Skills', ic: '🧭' },
       { to: '/certificates', label: 'My Certificates', ic: '📜' },
@@ -36,15 +39,43 @@ const NAV = {
 };
 
 const ROLE_LABEL = { trainer: 'Trainer Workspace', admin: 'Admin Console', trainee: 'Learner Workspace' };
-const ROLE_HOME = { trainer: '/trainer/courses', admin: '/admin/dashboard', trainee: '/courses' };
+
+function initialsFor(name) {
+  if (!name) return '?';
+  const parts = name.trim().split(' ');
+  if (parts.length === 1) return parts[0].slice(0, 2).toUpperCase();
+  return (parts[0][0] + parts[parts.length - 1][0]).toUpperCase();
+}
 
 export default function AppLayout({ children }) {
-  const { role, setRole, traineeBalance, trainerBalance } = useApp();
+  const { role, user, token, logout } = useApp();
   const loc = useLocation();
-  const sections = NAV[role];
-  const balance = role === 'trainee' ? traineeBalance : role === 'trainer' ? trainerBalance : null;
+  const navigate = useNavigate();
+  const sections = NAV[role] || [];
+
+  const [balance, setBalance] = useState(null);
+
+  useEffect(() => {
+    if (!token || role === 'admin') return;
+    (async () => {
+      try {
+        const res = await fetch(`${API_URL}/wallet/mine`, {
+          headers: { Authorization: `Bearer ${token}` },
+        });
+        const data = await res.json();
+        if (res.ok) setBalance(data.balance);
+      } catch {
+        // silently ignore — header balance is a nice-to-have, not critical
+      }
+    })();
+  }, [token, role, loc.pathname]);
 
   const pageTitle = titleFor(loc.pathname);
+
+  function handleLogout() {
+    logout();
+    navigate('/login', { replace: true });
+  }
 
   return (
     <div className="app-shell">
@@ -67,15 +98,19 @@ export default function AppLayout({ children }) {
           ))}
         </nav>
         <div className="sidebar-footer">
-          <div style={{ marginBottom: 8, textTransform: 'uppercase', letterSpacing: '0.08em', fontSize: 10 }}>Switch role (demo)</div>
-          <div className="flex gap-6">
-            {['trainer', 'admin', 'trainee'].map((r) => (
-              <button key={r} className="btn btn-sm" style={{ flex: 1, background: role === r ? 'var(--saffron)' : 'rgba(255,255,255,0.08)', color: role === r ? 'var(--navy-deep)' : '#c4cce3' }}
-                onClick={() => { setRole(r); window.location.hash = ROLE_HOME[r]; }}>
-                {r[0].toUpperCase() + r.slice(1)}
-              </button>
-            ))}
+          <NavLink to="/profile" className={({ isActive }) => `sidebar-link${isActive ? ' active' : ''}`} style={{ marginBottom: 10 }}>
+            <span className="ic">⚙️</span>Profile & Settings
+          </NavLink>
+          <div style={{ marginBottom: 8, fontSize: 13, color: '#c4cce3' }}>
+            Signed in as <strong>{user?.name}</strong>
           </div>
+          <button
+            className="btn btn-sm"
+            style={{ width: '100%', background: 'rgba(255,255,255,0.08)', color: '#f1f5f9' }}
+            onClick={handleLogout}
+          >
+            Log Out
+          </button>
         </div>
       </aside>
       <div className="main-col">
@@ -88,7 +123,7 @@ export default function AppLayout({ children }) {
             {balance !== null && (
               <div className="credit-pill"><span className="dot" /> {balance.toLocaleString()} CC</div>
             )}
-            <div className="avatar">{role === 'admin' ? 'AD' : role === 'trainer' ? 'AR' : 'YOU'}</div>
+            <div className="avatar" title={user?.name}>{initialsFor(user?.name)}</div>
           </div>
         </header>
         <main>{children}</main>
@@ -115,5 +150,7 @@ function titleFor(path) {
   if (path.includes('/leaderboard')) return 'Leaderboard';
   if (path.includes('/certificates')) return 'My Certificates';
   if (path.includes('/my-skills')) return 'My Skills';
+  if (path.includes('/profile')) return 'Profile & Settings';
+  if (path.includes('/home')) return 'Home';
   return 'Capacity Connect';
 }

@@ -4,8 +4,11 @@ import { useApp, nextId } from './AppContext';
 import { CATEGORIES, DIFFICULTIES } from './mockData';
 import { Modal } from './common';
 
+const API_URL = 'https://capacity-connect-backend-wh7n.onrender.com/api';
 const STEPS = ['Course Details', 'Content', 'Quiz', 'Preview', 'Submit'];
-const TRAINER_NAME = 'Dr. Anika Rao';
+
+const CLOUDINARY_CLOUD_NAME = 'cpvcdmgi';
+const CLOUDINARY_UPLOAD_PRESET = 'capacity_connect_videos';
 
 const emptyDraft = {
   title: '', description: '', category: CATEGORIES[0], difficulty: DIFFICULTIES[0], duration: '',
@@ -13,7 +16,7 @@ const emptyDraft = {
 };
 
 export default function CreateCourse() {
-  const { courses, addCourse, updateCourse, submitForApproval } = useApp();
+  const { token } = useApp();
   const [params] = useSearchParams();
   const editId = params.get('edit');
   const nav = useNavigate();
@@ -23,33 +26,121 @@ export default function CreateCourse() {
   const [courseId, setCourseId] = useState(editId || null);
   const [quiz, setQuiz] = useState([{ id: 'q1', q: '', options: ['', '', '', ''], answer: 0 }]);
   const [submitted, setSubmitted] = useState(false);
+  const [saving, setSaving] = useState(false);
+  const [saveError, setSaveError] = useState('');
+  const [loadingEdit, setLoadingEdit] = useState(!!editId);
 
+  // If editing, load the real course from the backend once on mount
   useEffect(() => {
-    if (editId) {
-      const c = courses.find((x) => x.id === editId);
-      if (c) setDraft({ ...emptyDraft, ...c });
-    }
-  }, [editId]);
+    if (!editId) return;
+    (async () => {
+      try {
+        const res = await fetch(`${API_URL}/courses/${editId}`, {
+          headers: { Authorization: `Bearer ${token}` },
+        });
+        const data = await res.json();
+        if (!res.ok) throw new Error(data.message || 'Failed to load course');
+        setDraft({ ...emptyDraft, ...data, objectives: data.objectives?.length ? data.objectives : [''] });
+        if (data.quizQuestions?.length) {
+          setQuiz(data.quizQuestions.map((q, i) => ({ id: `q${i}`, ...q })));
+        }
+      } catch (err) {
+        setSaveError(err.message);
+      } finally {
+        setLoadingEdit(false);
+      }
+    })();
+  }, [editId, token]);
 
   const set = (patch) => setDraft((d) => ({ ...d, ...patch }));
 
-  const saveDraft = (statusOverride) => {
-    if (courseId) {
-      updateCourse(courseId, { ...draft, trainer: TRAINER_NAME, ...(statusOverride ? { status: statusOverride } : {}) });
-      return courseId;
+  // Builds the payload shape the backend expects
+  function buildPayload(submitForApproval) {
+    return {
+      title: draft.title,
+      description: draft.description,
+      category: draft.category,
+      difficulty: draft.difficulty,
+      duration: draft.duration,
+      thumbnail: draft.thumbnail,
+      objectives: draft.objectives.filter(Boolean),
+      modules: draft.modules.map((m) => ({
+        title: m.title,
+        lessons: m.lessons.map((l) => ({
+          title: l.title,
+          duration: l.duration,
+          type: l.type,
+          videoUrl: l.videoUrl || '',
+        })),
+      })),
+      skillsGained: draft.skillsGained,
+      quizQuestions: quiz
+        .filter((q) => q.q.trim())
+        .map((q) => ({ q: q.q, options: q.options, answer: q.answer })),
+      submitForApproval: !!submitForApproval,
+    };
+  }
+
+  // Creates the course on first save, updates it on every save after that.
+  async function saveDraft(submitForApproval) {
+    setSaving(true);
+    setSaveError('');
+    try {
+      const payload = buildPayload(submitForApproval);
+      const url = courseId ? `${API_URL}/courses/${courseId}` : `${API_URL}/courses`;
+      const method = courseId ? 'PATCH' : 'POST';
+
+      const res = await fetch(url, {
+        method,
+        headers: {
+          'Content-Type': 'application/json',
+          Authorization: `Bearer ${token}`,
+        },
+        body: JSON.stringify(payload),
+      });
+      const data = await res.json();
+      if (!res.ok) throw new Error(data.message || 'Failed to save course');
+
+      if (!courseId) setCourseId(data._id);
+      return data._id || courseId;
+    } catch (err) {
+      setSaveError(err.message);
+      throw err;
+    } finally {
+      setSaving(false);
     }
-    const id = addCourse({ ...draft, trainer: TRAINER_NAME });
-    setCourseId(id);
-    return id;
+  }
+
+  const goStep = async (n) => {
+    try {
+      await saveDraft(false);
+      setStep(n);
+    } catch {
+      // error already shown via saveError
+    }
   };
 
-  const goStep = (n) => { saveDraft(); setStep(n); };
-
-  const submitCourse = () => {
-    const id = saveDraft();
-    submitForApproval(id);
-    setSubmitted(true);
+  const submitCourse = async () => {
+    try {
+      await saveDraft(true);
+      setSubmitted(true);
+    } catch {
+      // error already shown via saveError
+    }
   };
+
+  const saveAsDraftAndExit = async () => {
+    try {
+      await saveDraft(false);
+      nav('/trainer/courses');
+    } catch {
+      // error already shown via saveError
+    }
+  };
+
+  if (loadingEdit) {
+    return <div className="page"><p className="small muted">Loading course…</p></div>;
+  }
 
   if (submitted) {
     return (
@@ -62,7 +153,7 @@ export default function CreateCourse() {
           </p>
           <div className="flex gap-10" style={{ marginTop: 20, justifyContent: 'center' }}>
             <button className="btn btn-outline" onClick={() => nav('/trainer/courses')}>Back to My Courses</button>
-            <button className="btn btn-accent" onClick={() => { setSubmitted(false); setDraft(emptyDraft); setCourseId(null); setStep(0); }}>Create Another</button>
+            <button className="btn btn-accent" onClick={() => { setSubmitted(false); setDraft(emptyDraft); setCourseId(null); setQuiz([{ id: 'q1', q: '', options: ['', '', '', ''], answer: 0 }]); setStep(0); }}>Create Another</button>
           </div>
         </div>
       </div>
@@ -79,12 +170,14 @@ export default function CreateCourse() {
       </div>
 
       <Stepper step={step} />
+      {saveError && <p className="small" style={{ color: 'var(--coral)', marginTop: 8 }}>{saveError}</p>}
+      {saving && <p className="small muted" style={{ marginTop: 8 }}>Saving…</p>}
 
       {step === 0 && <DetailsStep draft={draft} set={set} onNext={() => goStep(1)} />}
       {step === 1 && <ContentStep draft={draft} set={set} onBack={() => goStep(0)} onNext={() => goStep(2)} />}
       {step === 2 && <QuizStep quiz={quiz} setQuiz={setQuiz} onBack={() => goStep(1)} onNext={() => goStep(3)} />}
       {step === 3 && <PreviewStep draft={draft} quiz={quiz} onBack={() => goStep(2)} onNext={() => goStep(4)} />}
-      {step === 4 && <SubmitStep draft={draft} onBack={() => goStep(3)} onSaveDraft={() => { saveDraft('Draft'); nav('/trainer/courses'); }} onSubmit={submitCourse} />}
+      {step === 4 && <SubmitStep draft={draft} onBack={() => goStep(3)} onSaveDraft={saveAsDraftAndExit} onSubmit={submitCourse} />}
     </div>
   );
 }
@@ -174,7 +267,16 @@ function DetailsStep({ draft, set, onNext }) {
         ))}
         <button className="btn btn-outline btn-sm" onClick={addObjective}>+ Add Objective</button>
       </div>
-
+      <div className="field">
+        <label>Skills Gained (comma-separated)</label>
+        <input
+          type="text"
+          placeholder="e.g. Cybersecurity, Threat Awareness"
+          value={(draft.skillsGained || []).join(', ')}
+          onChange={(e) => set({ skillsGained: e.target.value.split(',').map((s) => s.trim()).filter(Boolean) })}
+        />
+        <span className="hint">These skills will be added to a trainee's profile when they complete this course.</span>
+      </div>
       <StepFooter onNext={onNext} />
       {!valid && <p className="small muted" style={{ marginTop: 8 }}>Fill in title, description and duration to continue.</p>}
     </div>
@@ -265,42 +367,83 @@ function ContentStep({ draft, set, onBack, onNext }) {
   );
 }
 
+// Uploads directly to Cloudinary using an unsigned upload preset, with real
+// progress tracking via XMLHttpRequest. On success, videoUrl is the real
+// Cloudinary secure_url, saved onto the lesson.
 function VideoUploadModal({ onClose, onSave }) {
   const [file, setFile] = useState(null);
   const [progress, setProgress] = useState(0);
   const [uploading, setUploading] = useState(false);
   const [done, setDone] = useState(false);
+  const [error, setError] = useState('');
   const [title, setTitle] = useState('');
   const [description, setDescription] = useState('');
-  const timerRef = useRef(null);
+  const [videoUrl, setVideoUrl] = useState('');
+  const [durationSecs, setDurationSecs] = useState(0);
+  const xhrRef = useRef(null);
 
   const handleFile = (f) => {
     if (!f) return;
     setFile(f);
     setTitle(f.name.replace(/\.[^/.]+$/, ''));
-    setUploading(true);
-    setProgress(0);
+    setError('');
     setDone(false);
-    clearInterval(timerRef.current);
-    timerRef.current = setInterval(() => {
-      setProgress((p) => {
-        const next = Math.min(100, p + Math.random() * 18 + 6);
-        if (next >= 100) { clearInterval(timerRef.current); setUploading(false); setDone(true); }
-        return next;
-      });
-    }, 300);
+    setProgress(0);
+    setUploading(true);
+
+    const formData = new FormData();
+    formData.append('file', f);
+    formData.append('upload_preset', CLOUDINARY_UPLOAD_PRESET);
+    formData.append('resource_type', 'video');
+
+    const xhr = new XMLHttpRequest();
+    xhrRef.current = xhr;
+    xhr.open('POST', `https://api.cloudinary.com/v1_1/${CLOUDINARY_CLOUD_NAME}/video/upload`);
+
+    xhr.upload.onprogress = (e) => {
+      if (e.lengthComputable) {
+        setProgress(Math.round((e.loaded / e.total) * 100));
+      }
+    };
+
+    xhr.onload = () => {
+      setUploading(false);
+      if (xhr.status >= 200 && xhr.status < 300) {
+        const data = JSON.parse(xhr.responseText);
+        setVideoUrl(data.secure_url);
+        setDurationSecs(Math.round(data.duration || 0));
+        setDone(true);
+      } else {
+        setError('Upload failed. Please try again.');
+      }
+    };
+
+    xhr.onerror = () => {
+      setUploading(false);
+      setError('Upload failed — check your connection and try again.');
+    };
+
+    xhr.send(formData);
   };
 
-  useEffect(() => () => clearInterval(timerRef.current), []);
+  useEffect(() => () => xhrRef.current?.abort(), []);
 
   const durationLabel = () => {
-    const secs = file ? Math.max(60, Math.round((file.size / 1024 / 1024) * 12)) : 0;
-    const m = Math.floor(secs / 60); const s = secs % 60;
+    const m = Math.floor(durationSecs / 60);
+    const s = durationSecs % 60;
     return `${m}:${String(s).padStart(2, '0')}`;
   };
 
   const save = () => {
-    onSave({ id: nextId('l'), title: title || 'Untitled Lesson', description, duration: durationLabel(), type: 'video', fileName: file?.name });
+    onSave({
+      id: nextId('l'),
+      title: title || 'Untitled Lesson',
+      description,
+      duration: durationLabel(),
+      type: 'video',
+      videoUrl,
+      fileName: file?.name,
+    });
   };
 
   return (
@@ -322,20 +465,22 @@ function VideoUploadModal({ onClose, onSave }) {
         <div>
           <div className="video-player" style={{ marginBottom: 14 }}>
             {done ? (
-              <div className="play-btn">▶</div>
+              <video src={videoUrl} controls style={{ width: '100%', borderRadius: 8 }} />
             ) : (
-              <div style={{ textAlign: 'center' }}>
-                <div className="mono" style={{ fontSize: 13 }}>Uploading “{file.name}”…</div>
+              <div style={{ textAlign: 'center', padding: 20 }}>
+                <div className="mono" style={{ fontSize: 13 }}>Uploading "{file.name}"…</div>
               </div>
             )}
           </div>
           <div className="flex justify-between small" style={{ marginBottom: 4 }}>
-            <span>{uploading ? 'Uploading…' : done ? 'Upload complete' : 'Queued'}</span>
+            <span>{uploading ? 'Uploading…' : done ? 'Upload complete' : error ? 'Failed' : 'Queued'}</span>
             <span className="mono">{Math.round(progress)}%</span>
           </div>
           <div className="progress-track" style={{ marginBottom: 16 }}>
             <div className="progress-fill saffron" style={{ width: `${progress}%` }} />
           </div>
+
+          {error && <p className="small" style={{ color: 'var(--coral)', marginBottom: 12 }}>{error}</p>}
 
           <div className="field">
             <label>Video Title</label>
@@ -345,7 +490,7 @@ function VideoUploadModal({ onClose, onSave }) {
             <label>Description</label>
             <textarea placeholder="What does this video cover?" value={description} onChange={(e) => setDescription(e.target.value)} />
           </div>
-          <button className="btn btn-outline btn-sm" onClick={() => { setFile(null); setProgress(0); setDone(false); setUploading(false); }}>Choose a different file</button>
+          <button className="btn btn-outline btn-sm" onClick={() => { setFile(null); setProgress(0); setDone(false); setUploading(false); setError(''); setVideoUrl(''); }}>Choose a different file</button>
         </div>
       )}
     </Modal>

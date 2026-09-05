@@ -96,4 +96,39 @@ router.get('/me', protect, async (req, res) => {
   res.json({ user: req.user });
 });
 
+// PATCH /api/auth/me — update own profile (name, dept, and optionally password)
+router.patch('/me', protect, async (req, res) => {
+  try {
+    const { name, dept, currentPassword, newPassword } = req.body;
+    const user = await User.findById(req.user._id);
+
+    if (name) user.name = name;
+    if (dept !== undefined) user.dept = dept;
+
+    if (newPassword) {
+      if (!currentPassword) {
+        return res.status(400).json({ message: 'Current password is required to set a new password' });
+      }
+      const match = await bcrypt.compare(currentPassword, user.password);
+      if (!match) return res.status(401).json({ message: 'Current password is incorrect' });
+      user.password = await bcrypt.hash(newPassword, 10);
+    }
+
+    await user.save();
+    res.json({
+      user: {
+        id: user._id,
+        name: user.name,
+        email: user.email,
+        role: user.role,
+        dept: user.dept,
+        credits: user.credits,
+        contributionCredits: user.contributionCredits,
+      },
+    });
+  } catch (err) {
+    res.status(500).json({ message: 'Failed to update profile', error: err.message });
+  }
+});
+
 export default router;

@@ -1,13 +1,98 @@
-import React, { createContext, useContext, useState, useMemo } from 'react';
+import React, { createContext, useContext, useState, useMemo, useEffect } from 'react';
 import { initialCourses } from './mockData';
 
 const AppCtx = createContext(null);
+const API_URL = 'https://capacity-connect-backend-wh7n.onrender.com/api';
 
 let idCounter = 100;
 export const nextId = (prefix) => `${prefix}-${idCounter++}`;
 
 export function AppProvider({ children }) {
-  const [role, setRole] = useState('trainer'); // trainer | admin | trainee
+  // ---- Real auth state (replaces the old hardcoded role toggle) ----
+  const [user, setUser] = useState(() => {
+    const saved = localStorage.getItem('cc_user');
+    return saved ? JSON.parse(saved) : null;
+  });
+  const [token, setToken] = useState(() => localStorage.getItem('cc_token') || null);
+  const [authError, setAuthError] = useState('');
+  const [authLoading, setAuthLoading] = useState(false);
+
+  const role = user?.role || null; // 'trainee' | 'trainer' | 'admin' | null (not logged in)
+
+  useEffect(() => {
+    if (user && token) {
+      localStorage.setItem('cc_user', JSON.stringify(user));
+      localStorage.setItem('cc_token', token);
+    } else {
+      localStorage.removeItem('cc_user');
+      localStorage.removeItem('cc_token');
+    }
+  }, [user, token]);
+
+  async function login(email, password) {
+    setAuthLoading(true);
+    setAuthError('');
+    try {
+      const res = await fetch(`${API_URL}/auth/login`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ email, password }),
+      });
+      const data = await res.json();
+      if (!res.ok) {
+        setAuthError(data.message || 'Login failed');
+        return false;
+      }
+      setUser(data.user);
+      setToken(data.token);
+      return true;
+    } catch (err) {
+      setAuthError('Could not reach the server. Is the backend running?');
+      return false;
+    } finally {
+      setAuthLoading(false);
+    }
+  }
+
+  async function signup(name, email, password, signupRole, dept) {
+    setAuthLoading(true);
+    setAuthError('');
+    try {
+      const res = await fetch(`${API_URL}/auth/signup`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ name, email, password, role: signupRole, dept }),
+      });
+      const data = await res.json();
+      if (!res.ok) {
+        setAuthError(data.message || 'Signup failed');
+        return { ok: false };
+      }
+      if (data.pendingApproval) {
+        // Trainer signups don't get a token yet — they must wait for admin approval
+        return { ok: true, pendingApproval: true };
+      }
+      setUser(data.user);
+      setToken(data.token);
+      return { ok: true, pendingApproval: false };
+    } catch (err) {
+      setAuthError('Could not reach the server. Is the backend running?');
+      return { ok: false };
+    } finally {
+      setAuthLoading(false);
+    }
+  }
+
+  function logout() {
+    setUser(null);
+    setToken(null);
+  }
+  function updateUser(updatedFields) 
+  {
+    setUser((prev) => ({ ...prev, ...updatedFields }));
+  }
+
+  // ---- Existing mock-data-driven state (unchanged for now) ----
   const [courses, setCourses] = useState(initialCourses);
   const [enrollments, setEnrollments] = useState({ c1: { progress: 40, completedLessons: ['l1', 'l2'] }, c4: { progress: 100, completedLessons: ['l1', 'l2', 'l3', 'l4'] } });
   const [traineeBalance, setTraineeBalance] = useState(1250);
@@ -48,12 +133,14 @@ export function AppProvider({ children }) {
   };
 
   const value = useMemo(() => ({
-    role, setRole,
+    // auth
+    user, token, role, login, signup, logout, updateUser, authError, authLoading, setAuthError,
+    // existing mock state
     courses, addCourse, updateCourse, deleteCourse, submitForApproval, approveCourse, rejectCourse,
     enrollments, enroll, markLessonComplete,
     traineeBalance, setTraineeBalance,
     trainerBalance, setTrainerBalance,
-  }), [role, courses, enrollments, traineeBalance, trainerBalance]);
+  }), [user, token, role, authError, authLoading, courses, enrollments, traineeBalance, trainerBalance]);
 
   return <AppCtx.Provider value={value}>{children}</AppCtx.Provider>;
 }
