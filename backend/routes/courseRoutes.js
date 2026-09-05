@@ -127,4 +127,29 @@ router.delete('/:id', protect, requireRole('trainer'), async (req, res) => {
   }
 });
 
+// POST /api/courses/:id/reviews — trainee leaves feedback on a course
+// Body: { rating: 1-5, text }
+router.post('/:id/reviews', protect, requireRole('trainee'), async (req, res) => {
+  try {
+    const { rating, text } = req.body;
+    if (!rating || rating < 1 || rating > 5) {
+      return res.status(400).json({ message: 'Rating must be between 1 and 5' });
+    }
+
+    const course = await Course.findById(req.params.id);
+    if (!course) return res.status(404).json({ message: 'Course not found' });
+
+    course.reviews.push({ user: req.user.name, rating, text: text || '' });
+
+    // Recalculate the course's average rating
+    const total = course.reviews.reduce((sum, r) => sum + r.rating, 0);
+    course.rating = Math.round((total / course.reviews.length) * 10) / 10;
+
+    await course.save();
+    res.status(201).json({ reviews: course.reviews, rating: course.rating });
+  } catch (err) {
+    res.status(500).json({ message: 'Failed to submit review', error: err.message });
+  }
+});
+
 export default router;
