@@ -8,6 +8,9 @@ export default function Profile() {
 
   const [name, setName] = useState(user?.name || '');
   const [dept, setDept] = useState(user?.dept || '');
+  const [qualifications, setQualifications] = useState(user?.qualifications || '');
+  const [workExperience, setWorkExperience] = useState(user?.workExperience || '');
+  const [interests, setInterests] = useState(user?.interests || '');
   const [currentPassword, setCurrentPassword] = useState('');
   const [newPassword, setNewPassword] = useState('');
   const [message, setMessage] = useState('');
@@ -17,7 +20,7 @@ export default function Profile() {
     setSaving(true);
     setMessage('');
     try {
-      const body = { name, dept };
+      const body = { name, dept, qualifications, workExperience, interests };
       if (newPassword) {
         body.currentPassword = currentPassword;
         body.newPassword = newPassword;
@@ -50,7 +53,7 @@ export default function Profile() {
       <div className="page-head">
         <div>
           <h1>Profile & Settings</h1>
-          <p className="desc">Manage your account details and password.</p>
+          <p className="desc">Manage your professional profile, account details, and password.</p>
         </div>
       </div>
 
@@ -80,6 +83,37 @@ export default function Profile() {
           <label className="small muted" style={{ display: 'block', marginBottom: 4 }}>New Password</label>
           <input type="password" value={newPassword} onChange={(e) => setNewPassword(e.target.value)} placeholder="Leave blank to keep current password" style={{ width: '100%' }} />
         </div>
+      </div>
+
+      <div className="card card-pad" style={{ marginTop: 20 }}>
+        <h3 style={{ fontSize: 15, marginBottom: 14 }}>Professional Profile</h3>
+        <p className="small muted" style={{ marginBottom: 14 }}>
+          This information helps build your professional profile within Capacity Connect.
+        </p>
+
+        <label className="small muted" style={{ display: 'block', marginBottom: 4 }}>Qualifications</label>
+        <textarea
+          value={qualifications}
+          onChange={(e) => setQualifications(e.target.value)}
+          placeholder="e.g. B.Tech in Computer Science, M.Sc in Data Analytics"
+          style={{ width: '100%', minHeight: 60, marginBottom: 14 }}
+        />
+
+        <label className="small muted" style={{ display: 'block', marginBottom: 4 }}>Work Experience</label>
+        <textarea
+          value={workExperience}
+          onChange={(e) => setWorkExperience(e.target.value)}
+          placeholder="e.g. 5 years as a Data Analyst at Dept. of Revenue"
+          style={{ width: '100%', minHeight: 60, marginBottom: 14 }}
+        />
+
+        <label className="small muted" style={{ display: 'block', marginBottom: 4 }}>Interests</label>
+        <textarea
+          value={interests}
+          onChange={(e) => setInterests(e.target.value)}
+          placeholder="e.g. Cybersecurity, Public Policy, Data Visualization"
+          style={{ width: '100%', minHeight: 60 }}
+        />
       </div>
 
       <div className="flex justify-between items-center" style={{ marginTop: 20 }}>

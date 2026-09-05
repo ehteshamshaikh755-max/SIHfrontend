@@ -7,6 +7,9 @@ const userSchema = new mongoose.Schema(
     password: { type: String, required: true }, // hashed
     role: { type: String, enum: ['trainee', 'trainer', 'admin'], required: true },
     dept: { type: String, default: '' },
+    qualifications: { type: String, default: '' },
+    workExperience: { type: String, default: '' },
+    interests: { type: String, default: '' },
 
     // Trainees are auto-approved. Trainers need admin approval before they can log in.
     status: {
@@ -24,6 +27,15 @@ const userSchema = new mongoose.Schema(
       {
         name: String,
         pct: { type: Number, default: 0 },
+      },
+    ],
+
+    // Trainer subject-matter competencies, used for admin competency mapping
+    // (identifying suitable trainers for a given subject/category).
+    trainerCompetencies: [
+      {
+        subject: String,
+        level: { type: String, enum: ['Beginner', 'Intermediate', 'Advanced', 'Expert'], default: 'Intermediate' },
       },
     ],
   },

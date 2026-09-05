@@ -84,6 +84,9 @@ router.post('/login', async (req, res) => {
         dept: user.dept,
         credits: user.credits,
         contributionCredits: user.contributionCredits,
+        qualifications: user.qualifications,
+        workExperience: user.workExperience,
+        interests: user.interests,
       },
     });
   } catch (err) {
@@ -96,14 +99,21 @@ router.get('/me', protect, async (req, res) => {
   res.json({ user: req.user });
 });
 
-// PATCH /api/auth/me — update own profile (name, dept, and optionally password)
+// PATCH /api/auth/me — update own profile (name, dept, qualifications, work
+// experience, interests, and optionally password)
 router.patch('/me', protect, async (req, res) => {
   try {
-    const { name, dept, currentPassword, newPassword } = req.body;
+    const {
+      name, dept, qualifications, workExperience, interests,
+      currentPassword, newPassword,
+    } = req.body;
     const user = await User.findById(req.user._id);
 
     if (name) user.name = name;
     if (dept !== undefined) user.dept = dept;
+    if (qualifications !== undefined) user.qualifications = qualifications;
+    if (workExperience !== undefined) user.workExperience = workExperience;
+    if (interests !== undefined) user.interests = interests;
 
     if (newPassword) {
       if (!currentPassword) {
@@ -124,6 +134,9 @@ router.patch('/me', protect, async (req, res) => {
         dept: user.dept,
         credits: user.credits,
         contributionCredits: user.contributionCredits,
+        qualifications: user.qualifications,
+        workExperience: user.workExperience,
+        interests: user.interests,
       },
     });
   } catch (err) {
