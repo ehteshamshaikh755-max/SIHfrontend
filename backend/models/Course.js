@@ -1,11 +1,10 @@
-import mongoose from 'mongoose';
-
 const lessonSchema = new mongoose.Schema(
   {
     title: { type: String, required: true },
-    duration: { type: String, default: '' }, // e.g. "6:12" or "10 Qs" for quiz-type lessons
-    type: { type: String, enum: ['video', 'quiz'], default: 'video' },
-    videoUrl: { type: String, default: '' }, // Cloudinary URL, empty for quiz-type lessons
+    duration: { type: String, default: '' },
+    type: { type: String, enum: ['video', 'quiz', 'document'], default: 'video' },
+    videoUrl: { type: String, default: '' },
+    docUrl: { type: String, default: '' }, // Cloudinary URL for uploaded PDFs/presentations
   },
   { _id: true }
 );

@@ -102,7 +102,20 @@ export default function LearningPage() {
 
       <div className="grid" style={{ gridTemplateColumns: '2.2fr 1fr', alignItems: 'start', marginTop: 18 }}>
         <div>
-          {current?.videoUrl ? (
+          {current?.type === 'document' ? (
+            <div className="card card-pad" style={{ textAlign: 'center', padding: 50 }}>
+              <div style={{ fontSize: 48 }}>📄</div>
+              <h3 style={{ marginTop: 14 }}>{current.title}</h3>
+              {current.description && <p className="small muted" style={{ marginTop: 6 }}>{current.description}</p>}
+              {current.docUrl ? (
+                <a href={current.docUrl} target="_blank" rel="noopener noreferrer" className="btn btn-accent" style={{ marginTop: 18, display: 'inline-block' }}>
+                  Open Document
+                </a>
+              ) : (
+                <p className="small muted" style={{ marginTop: 18 }}>No document uploaded for this lesson yet.</p>
+              )}
+            </div>
+          ) : current?.videoUrl ? (
             <div style={{ background: '#000', borderRadius: 12, overflow: 'hidden' }}>
               <video
                 key={current._id}
@@ -142,8 +155,8 @@ export default function LearningPage() {
                 const cls = complete ? 'complete' : isCurrent ? 'current' : locked ? 'locked' : '';
                 return (
                   <div key={l._id} className={`lesson-item ${cls}`} style={{ cursor: locked ? 'not-allowed' : 'pointer' }}
-                    onClick={() => { if (!locked && l.type === 'video') nav(`/learn/${courseId}/${l._id}`); if (!locked && l.type === 'quiz') nav(`/quiz/${courseId}`); }}>
-                    <span className="lstatus">{complete ? '✓' : locked ? '🔒' : l.type === 'quiz' ? '📝' : '▶'}</span>
+                    onClick={() => { if (!locked && (l.type === 'video' || l.type === 'document')) nav(`/learn/${courseId}/${l._id}`); if (!locked && l.type === 'quiz') nav(`/quiz/${courseId}`); }}>
+                    <span className="lstatus">{complete ? '✓' : locked ? '🔒' : l.type === 'quiz' ? '📝' : l.type === 'document' ? '📄' : '▶'}</span>
                     <span style={{ flex: 1 }}>{l.title}</span>
                     <span className="mono small muted">{l.duration}</span>
                   </div>

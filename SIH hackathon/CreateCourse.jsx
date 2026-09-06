@@ -30,7 +30,6 @@ export default function CreateCourse() {
   const [saveError, setSaveError] = useState('');
   const [loadingEdit, setLoadingEdit] = useState(!!editId);
 
-  // If editing, load the real course from the backend once on mount
   useEffect(() => {
     if (!editId) return;
     (async () => {
@@ -54,7 +53,6 @@ export default function CreateCourse() {
 
   const set = (patch) => setDraft((d) => ({ ...d, ...patch }));
 
-  // Builds the payload shape the backend expects
   function buildPayload(submitForApproval) {
     return {
       title: draft.title,
@@ -71,6 +69,7 @@ export default function CreateCourse() {
           duration: l.duration,
           type: l.type,
           videoUrl: l.videoUrl || '',
+          docUrl: l.docUrl || '',
         })),
       })),
       skillsGained: draft.skillsGained,
@@ -81,7 +80,6 @@ export default function CreateCourse() {
     };
   }
 
-  // Creates the course on first save, updates it on every save after that.
   async function saveDraft(submitForApproval) {
     setSaving(true);
     setSaveError('');
@@ -267,6 +265,7 @@ function DetailsStep({ draft, set, onNext }) {
         ))}
         <button className="btn btn-outline btn-sm" onClick={addObjective}>+ Add Objective</button>
       </div>
+
       <div className="field">
         <label>Skills Gained (comma-separated)</label>
         <input
@@ -277,15 +276,16 @@ function DetailsStep({ draft, set, onNext }) {
         />
         <span className="hint">These skills will be added to a trainee's profile when they complete this course.</span>
       </div>
+
       <StepFooter onNext={onNext} />
       {!valid && <p className="small muted" style={{ marginTop: 8 }}>Fill in title, description and duration to continue.</p>}
     </div>
   );
 }
 
-/* ---------------- Step 2: Content (modules + video upload) ---------------- */
+/* ---------------- Step 2: Content (modules + video/document upload) ---------------- */
 function ContentStep({ draft, set, onBack, onNext }) {
-  const [showUpload, setShowUpload] = useState(false);
+  const [uploadType, setUploadType] = useState(null); // 'video' | 'document' | null
   const [activeModule, setActiveModule] = useState(null);
 
   const addModule = () => {
@@ -295,9 +295,9 @@ function ContentStep({ draft, set, onBack, onNext }) {
   const renameModule = (id, title) => set({ modules: draft.modules.map((m) => (m.id === id ? { ...m, title } : m)) });
   const deleteModule = (id) => set({ modules: draft.modules.filter((m) => m.id !== id) });
 
-  const openUploadFor = (moduleId) => { setActiveModule(moduleId); setShowUpload(true); };
+  const openUploadFor = (moduleId, type) => { setActiveModule(moduleId); setUploadType(type); };
 
-  const addVideoLesson = (moduleId, lesson) => {
+  const addLesson = (moduleId, lesson) => {
     set({
       modules: draft.modules.map((m) => (m.id === moduleId ? { ...m, lessons: [...m.lessons, lesson] } : m)),
     });
@@ -313,14 +313,14 @@ function ContentStep({ draft, set, onBack, onNext }) {
       <div className="card card-pad">
         <div className="flex justify-between items-center">
           <div>
-            <h3 style={{ fontSize: 16 }}>Modules & Videos</h3>
-            <p className="small muted">Group lessons into modules, then upload a video for each lesson.</p>
+            <h3 style={{ fontSize: 16 }}>Modules, Videos & Study Materials</h3>
+            <p className="small muted">Group lessons into modules, then upload videos or documents (PDFs, presentations) for each.</p>
           </div>
           <button className="btn btn-outline btn-sm" onClick={addModule}>+ Add Module</button>
         </div>
 
         {draft.modules.length === 0 && (
-          <div className="empty-state"><div className="big-ic">🗂️</div><p className="small">No modules yet — add one to start uploading videos.</p></div>
+          <div className="empty-state"><div className="big-ic">🗂️</div><p className="small">No modules yet — add one to start uploading content.</p></div>
         )}
 
         <div className="flex-col gap-16" style={{ marginTop: 16 }}>
@@ -329,22 +329,23 @@ function ContentStep({ draft, set, onBack, onNext }) {
               <div className="flex gap-8 items-center justify-between" style={{ marginBottom: 10 }}>
                 <input type="text" value={m.title} onChange={(e) => renameModule(m.id, e.target.value)} style={{ fontWeight: 700, maxWidth: 320 }} />
                 <div className="flex gap-8">
-                  <button className="btn btn-accent btn-sm" onClick={() => openUploadFor(m.id)}>⬆ Upload Video</button>
+                  <button className="btn btn-accent btn-sm" onClick={() => openUploadFor(m.id, 'video')}>⬆ Upload Video</button>
+                  <button className="btn btn-outline btn-sm" onClick={() => openUploadFor(m.id, 'document')}>📄 Upload Document</button>
                   <button className="btn btn-danger btn-sm" onClick={() => deleteModule(m.id)}>Delete</button>
                 </div>
               </div>
-              {m.lessons.length === 0 && <p className="small muted">No videos in this module yet.</p>}
+              {m.lessons.length === 0 && <p className="small muted">No content in this module yet.</p>}
               {m.lessons.map((l) => (
                 <div key={l.id} className="flex justify-between items-center" style={{ padding: '9px 0', borderTop: '1px dashed var(--line)' }}>
                   <div className="flex gap-10 items-center">
-                    <span>{l.type === 'quiz' ? '📝' : '🎬'}</span>
+                    <span>{l.type === 'quiz' ? '📝' : l.type === 'document' ? '📄' : '🎬'}</span>
                     <div>
                       <div style={{ fontWeight: 600, fontSize: 13.5 }}>{l.title}</div>
                       <div className="small muted">{l.duration}{l.description ? ` · ${l.description}` : ''}</div>
                     </div>
                   </div>
                   <div className="flex gap-8">
-                    <button className="btn btn-ghost btn-sm" onClick={() => openUploadFor(m.id)}>Replace</button>
+                    <button className="btn btn-ghost btn-sm" onClick={() => openUploadFor(m.id, l.type === 'document' ? 'document' : 'video')}>Replace</button>
                     <button className="btn btn-ghost btn-sm" onClick={() => deleteLesson(m.id, l.id)}>Delete</button>
                   </div>
                 </div>
@@ -355,12 +356,18 @@ function ContentStep({ draft, set, onBack, onNext }) {
       </div>
 
       <StepFooter onBack={onBack} onNext={onNext} />
-      {totalLessons === 0 && <p className="small muted" style={{ marginTop: 8 }}>Tip: add at least one video before continuing.</p>}
+      {totalLessons === 0 && <p className="small muted" style={{ marginTop: 8 }}>Tip: add at least one video or document before continuing.</p>}
 
-      {showUpload && (
+      {uploadType === 'video' && (
         <VideoUploadModal
-          onClose={() => setShowUpload(false)}
-          onSave={(lesson) => { addVideoLesson(activeModule, lesson); setShowUpload(false); }}
+          onClose={() => setUploadType(null)}
+          onSave={(lesson) => { addLesson(activeModule, lesson); setUploadType(null); }}
+        />
+      )}
+      {uploadType === 'document' && (
+        <DocumentUploadModal
+          onClose={() => setUploadType(null)}
+          onSave={(lesson) => { addLesson(activeModule, lesson); setUploadType(null); }}
         />
       )}
     </div>
@@ -394,7 +401,6 @@ function VideoUploadModal({ onClose, onSave }) {
     const formData = new FormData();
     formData.append('file', f);
     formData.append('upload_preset', CLOUDINARY_UPLOAD_PRESET);
-    formData.append('resource_type', 'video');
 
     const xhr = new XMLHttpRequest();
     xhrRef.current = xhr;
@@ -497,6 +503,117 @@ function VideoUploadModal({ onClose, onSave }) {
   );
 }
 
+// Uploads a document (PDF/PPT/DOC) to Cloudinary as a raw resource.
+function DocumentUploadModal({ onClose, onSave }) {
+  const [file, setFile] = useState(null);
+  const [progress, setProgress] = useState(0);
+  const [uploading, setUploading] = useState(false);
+  const [done, setDone] = useState(false);
+  const [error, setError] = useState('');
+  const [title, setTitle] = useState('');
+  const [description, setDescription] = useState('');
+  const [docUrl, setDocUrl] = useState('');
+  const xhrRef = useRef(null);
+
+  const handleFile = (f) => {
+    if (!f) return;
+    setFile(f);
+    setTitle(f.name.replace(/\.[^/.]+$/, ''));
+    setError('');
+    setDone(false);
+    setProgress(0);
+    setUploading(true);
+
+    const formData = new FormData();
+    formData.append('file', f);
+    formData.append('upload_preset', CLOUDINARY_UPLOAD_PRESET);
+
+    const xhr = new XMLHttpRequest();
+    xhrRef.current = xhr;
+    xhr.open('POST', `https://api.cloudinary.com/v1_1/${CLOUDINARY_CLOUD_NAME}/raw/upload`);
+
+    xhr.upload.onprogress = (e) => {
+      if (e.lengthComputable) {
+        setProgress(Math.round((e.loaded / e.total) * 100));
+      }
+    };
+
+    xhr.onload = () => {
+      setUploading(false);
+      if (xhr.status >= 200 && xhr.status < 300) {
+        const data = JSON.parse(xhr.responseText);
+        setDocUrl(data.secure_url);
+        setDone(true);
+      } else {
+        setError('Upload failed. Please try again.');
+      }
+    };
+
+    xhr.onerror = () => {
+      setUploading(false);
+      setError('Upload failed — check your connection and try again.');
+    };
+
+    xhr.send(formData);
+  };
+
+  useEffect(() => () => xhrRef.current?.abort(), []);
+
+  const save = () => {
+    onSave({
+      id: nextId('l'),
+      title: title || 'Untitled Document',
+      description,
+      duration: '',
+      type: 'document',
+      docUrl,
+      fileName: file?.name,
+    });
+  };
+
+  return (
+    <Modal title="Upload Document" onClose={onClose} wide
+      footer={<>
+        <button className="btn btn-ghost" onClick={onClose}>Cancel</button>
+        <button className="btn btn-accent" disabled={!done || !title.trim()} onClick={save}>Save Document to Module</button>
+      </>}>
+      {!file && (
+        <label className="card" style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center', padding: 36, border: '2px dashed var(--line)', cursor: 'pointer', background: 'var(--paper)' }}>
+          <div style={{ fontSize: 30 }}>📄</div>
+          <p style={{ fontWeight: 700, marginTop: 8 }}>Click to select a document</p>
+          <p className="small muted">PDF, PPT, DOC or DOCX — up to 100 MB</p>
+          <input type="file" accept=".pdf,.ppt,.pptx,.doc,.docx" style={{ display: 'none' }} onChange={(e) => handleFile(e.target.files[0])} />
+        </label>
+      )}
+
+      {file && (
+        <div>
+          <div className="flex justify-between small" style={{ marginBottom: 4 }}>
+            <span>{uploading ? 'Uploading…' : done ? 'Upload complete' : error ? 'Failed' : 'Queued'}</span>
+            <span className="mono">{Math.round(progress)}%</span>
+          </div>
+          <div className="progress-track" style={{ marginBottom: 16 }}>
+            <div className="progress-fill saffron" style={{ width: `${progress}%` }} />
+          </div>
+
+          {error && <p className="small" style={{ color: 'var(--coral)', marginBottom: 12 }}>{error}</p>}
+          {done && <p className="small" style={{ color: 'var(--teal)', marginBottom: 12 }}>📄 {file.name} uploaded successfully.</p>}
+
+          <div className="field">
+            <label>Document Title</label>
+            <input type="text" value={title} onChange={(e) => setTitle(e.target.value)} />
+          </div>
+          <div className="field">
+            <label>Description</label>
+            <textarea placeholder="What does this document cover?" value={description} onChange={(e) => setDescription(e.target.value)} />
+          </div>
+          <button className="btn btn-outline btn-sm" onClick={() => { setFile(null); setProgress(0); setDone(false); setUploading(false); setError(''); setDocUrl(''); }}>Choose a different file</button>
+        </div>
+      )}
+    </Modal>
+  );
+}
+
 /* ---------------- Step 3: Quiz ---------------- */
 function QuizStep({ quiz, setQuiz, onBack, onNext }) {
   const addQ = () => setQuiz([...quiz, { id: nextId('q'), q: '', options: ['', '', '', ''], answer: 0 }]);
@@ -563,7 +680,11 @@ function PreviewStep({ draft, quiz, onBack, onNext }) {
         {draft.modules.map((m) => (
           <div key={m.id} style={{ marginBottom: 10 }}>
             <div style={{ fontWeight: 700, fontSize: 13.5 }}>{m.title}</div>
-            {m.lessons.map((l) => <div key={l.id} className="small muted" style={{ paddingLeft: 14 }}>🎬 {l.title} · {l.duration}</div>)}
+            {m.lessons.map((l) => (
+              <div key={l.id} className="small muted" style={{ paddingLeft: 14 }}>
+                {l.type === 'document' ? '📄' : '🎬'} {l.title} {l.duration ? `· ${l.duration}` : ''}
+              </div>
+            ))}
           </div>
         ))}
       </div>
