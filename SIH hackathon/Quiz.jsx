@@ -11,6 +11,7 @@ export default function Quiz() {
 
   const [courseTitle, setCourseTitle] = useState('');
   const [passingScorePct, setPassingScorePct] = useState(60);
+  const [quizDeadline, setQuizDeadline] = useState(null);
   const [questions, setQuestions] = useState([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState('');
@@ -30,6 +31,7 @@ export default function Quiz() {
       if (!res.ok) throw new Error(data.message || 'Failed to load quiz');
       setCourseTitle(data.courseTitle);
       setPassingScorePct(data.passingScorePct);
+      setQuizDeadline(data.quizDeadline);
       setQuestions(data.questions);
     } catch (err) {
       setError(err.message);
@@ -42,6 +44,7 @@ export default function Quiz() {
 
   const select = (qIdx, optIdx) => setAnswers((a) => ({ ...a, [qIdx]: optIdx }));
   const allAnswered = Object.keys(answers).length === questions.length && questions.length > 0;
+  const deadlinePassed = quizDeadline && new Date() > new Date(quizDeadline);
 
   async function handleSubmit() {
     setSubmitting(true);
@@ -114,13 +117,23 @@ export default function Quiz() {
         </div>
       </div>
 
+      {quizDeadline && (
+        <div className="card card-pad" style={{ marginBottom: 14, background: deadlinePassed ? 'var(--coral-soft)' : 'var(--teal-soft)' }}>
+          <p className="small" style={{ color: deadlinePassed ? 'var(--coral)' : 'var(--teal)', fontWeight: 600 }}>
+            {deadlinePassed
+              ? `⏰ Deadline passed on ${new Date(quizDeadline).toLocaleString()}. Submission is closed.`
+              : `⏰ Deadline: ${new Date(quizDeadline).toLocaleString()}`}
+          </p>
+        </div>
+      )}
+
       {questions.map((q, i) => (
         <div key={i} className="card card-pad" style={{ marginBottom: 14 }}>
           <p style={{ fontWeight: 700, marginBottom: 12 }}>{i + 1}. {q.q}</p>
           <div className="flex-col gap-8">
             {q.options.map((opt, oi) => (
-              <label key={oi} className="flex gap-10 items-center" style={{ padding: '9px 12px', border: '1px solid var(--line)', borderRadius: 8, cursor: 'pointer', background: answers[i] === oi ? 'var(--teal-soft)' : 'transparent' }}>
-                <input type="radio" name={`q${i}`} checked={answers[i] === oi} onChange={() => select(i, oi)} />
+              <label key={oi} className="flex gap-10 items-center" style={{ padding: '9px 12px', border: '1px solid var(--line)', borderRadius: 8, cursor: deadlinePassed ? 'not-allowed' : 'pointer', background: answers[i] === oi ? 'var(--teal-soft)' : 'transparent', opacity: deadlinePassed ? 0.6 : 1 }}>
+                <input type="radio" name={`q${i}`} checked={answers[i] === oi} onChange={() => select(i, oi)} disabled={deadlinePassed} />
                 <span className="small">{opt}</span>
               </label>
             ))}
@@ -128,10 +141,10 @@ export default function Quiz() {
         </div>
       ))}
 
-      <button className="btn btn-accent btn-block" disabled={!allAnswered || submitting} onClick={handleSubmit}>
-        {submitting ? 'Submitting…' : 'Submit Quiz'}
+      <button className="btn btn-accent btn-block" disabled={!allAnswered || submitting || deadlinePassed} onClick={handleSubmit}>
+        {submitting ? 'Submitting…' : deadlinePassed ? 'Deadline Passed' : 'Submit Quiz'}
       </button>
-      {!allAnswered && <p className="small muted" style={{ marginTop: 8, textAlign: 'center' }}>Answer all {questions.length} questions to submit.</p>}
+      {!allAnswered && !deadlinePassed && <p className="small muted" style={{ marginTop: 8, textAlign: 'center' }}>Answer all {questions.length} questions to submit.</p>}
     </div>
   );
 }

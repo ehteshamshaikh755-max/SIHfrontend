@@ -61,6 +61,7 @@ export default function CreateCourse() {
       difficulty: draft.difficulty,
       duration: draft.duration,
       thumbnail: draft.thumbnail,
+      quizDeadline: draft.quizDeadline || null,
       objectives: draft.objectives.filter(Boolean),
       modules: draft.modules.map((m) => ({
         title: m.title,
@@ -241,6 +242,15 @@ function DetailsStep({ draft, set, onNext }) {
         <div className="field">
           <label>Estimated Duration</label>
           <input type="text" placeholder="e.g. 6h 20m" value={draft.duration} onChange={(e) => set({ duration: e.target.value })} />
+        </div>
+        <div className="field">
+          <label>Quiz Deadline (optional)</label>
+          <input
+            type="datetime-local"
+            value={draft.quizDeadline ? new Date(draft.quizDeadline).toISOString().slice(0, 16) : ''}
+            onChange={(e) => set({ quizDeadline: e.target.value ? new Date(e.target.value).toISOString() : null })}
+          />
+          <span className="hint">Trainees must complete the quiz before this date/time. Leave blank for no deadline.</span>
         </div>
         <div className="field">
           <label>Thumbnail Style</label>

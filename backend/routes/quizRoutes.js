@@ -18,11 +18,16 @@ function makeCertId(category) {
 // GET /api/quizzes/:courseId — questions only, answers stripped out
 router.get('/:courseId', protect, requireRole('trainee'), async (req, res) => {
   try {
-    const course = await Course.findById(req.params.courseId).select('quizQuestions title passingScorePct');
+    const course = await Course.findById(req.params.courseId).select('quizQuestions title passingScorePct quizDeadline');
     if (!course) return res.status(404).json({ message: 'Course not found' });
 
     const questions = course.quizQuestions.map((q) => ({ q: q.q, options: q.options }));
-    res.json({ courseTitle: course.title, passingScorePct: course.passingScorePct, questions });
+    res.json({
+      courseTitle: course.title,
+      passingScorePct: course.passingScorePct,
+      quizDeadline: course.quizDeadline,
+      questions,
+    });
   } catch (err) {
     res.status(500).json({ message: 'Failed to fetch quiz', error: err.message });
   }
@@ -34,6 +39,11 @@ router.post('/:courseId/submit', protect, requireRole('trainee'), async (req, re
     const { answers } = req.body;
     const course = await Course.findById(req.params.courseId);
     if (!course) return res.status(404).json({ message: 'Course not found' });
+
+    if (course.quizDeadline && new Date() > new Date(course.quizDeadline)) {
+      return res.status(403).json({ message: 'The deadline for this quiz has passed.' });
+    }
+
     if (!Array.isArray(answers) || answers.length !== course.quizQuestions.length) {
       return res.status(400).json({ message: 'Answers must match number of questions' });
     }
