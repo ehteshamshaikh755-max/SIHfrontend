@@ -92,7 +92,7 @@ router.patch('/:id', protect, requireRole('trainer'), async (req, res) => {
     const editable = [
       'title', 'description', 'category', 'difficulty', 'duration',
       'thumbnail', 'objectives', 'modules', 'skillsGained',
-      'quizQuestions', 'passingScorePct',
+      'quizQuestions', 'passingScorePct', 'quizDeadline',
     ];
     editable.forEach((field) => {
       if (req.body[field] !== undefined) course[field] = req.body[field];

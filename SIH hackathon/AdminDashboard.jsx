@@ -169,6 +169,23 @@ export default function AdminDashboard() {
       setActionLoading(false);
     }
   }
+  async function toggleFeatured(c) {
+    setActionLoading(true);
+    try {
+      const res = await fetch(`${API_URL}/admin/courses/${c._id}/featured`, {
+        method: 'PATCH',
+        headers: { Authorization: `Bearer ${token}` },
+      });
+      const data = await res.json();
+      if (!res.ok) throw new Error(data.message || 'Failed to update');
+      setReviewing(data);
+      await fetchCourses();
+    } catch (err) {
+      alert(err.message);
+    } finally {
+      setActionLoading(false);
+    }
+  }
 
   return (
     <div className="page">
@@ -262,7 +279,14 @@ export default function AdminDashboard() {
             <button className="btn btn-accent" disabled={actionLoading} onClick={() => doApprove(reviewing)}>
               {actionLoading ? 'Approving…' : 'Approve Course'}
             </button>
-          </> : <button className="btn btn-outline" onClick={() => setReviewing(null)}>Close</button>}>
+          </> : <>
+            {reviewing.status === 'Approved' && (
+              <button className="btn btn-outline" disabled={actionLoading} onClick={() => toggleFeatured(reviewing)}>
+                {reviewing.featured ? '★ Unfeature' : '☆ Feature on Homepage'}
+              </button>
+            )}
+            <button className="btn btn-outline" onClick={() => setReviewing(null)}>Close</button>
+          </>}>
           <div className="flex justify-between items-start">
             <div>
               <h2 style={{ fontSize: 19 }}>{reviewing.title}</h2>

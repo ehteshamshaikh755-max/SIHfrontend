@@ -8,7 +8,7 @@ const API_URL = 'https://capacity-connect-backend-wh7n.onrender.com/api';
 export default function Home() {
   const { token, user } = useApp();
   const [stats, setStats] = useState({ totalCourses: 0, totalLearners: 0, certificatesIssued: 0 });
-  const [popular, setPopular] = useState([]);
+  const [featured, setFeatured] = useState([]);
   const [announcements, setAnnouncements] = useState([]);
   const [continueLearning, setContinueLearning] = useState([]);
   const [loading, setLoading] = useState(true);
@@ -16,13 +16,13 @@ export default function Home() {
   useEffect(() => {
     Promise.all([
       fetch(`${API_URL}/home/stats`).then((r) => r.json()),
-      fetch(`${API_URL}/home/popular`).then((r) => r.json()),
+      fetch(`${API_URL}/home/featured`).then((r) => r.json()),
       fetch(`${API_URL}/announcements`).then((r) => r.json()),
       fetch(`${API_URL}/enrollments/mine`, { headers: { 'Authorization': `Bearer ${token}` } }).then((r) => r.json()),
     ])
-      .then(([statsData, popularData, announcementsData, enrollmentsData]) => {
+      .then(([statsData, featuredData, announcementsData, enrollmentsData]) => {
         setStats(statsData);
-        setPopular(Array.isArray(popularData) ? popularData : []);
+        setFeatured(Array.isArray(featuredData) ? featuredData : []);
         setAnnouncements(Array.isArray(announcementsData) ? announcementsData : []);
         const inProgress = Array.isArray(enrollmentsData)
           ? enrollmentsData.filter((e) => e.status === 'in-progress')
@@ -66,13 +66,18 @@ export default function Home() {
 
       <div className="grid" style={{ gridTemplateColumns: '1.4fr 1fr', alignItems: 'start', gap: 20 }}>
         <div className="card card-pad">
-          <h3 style={{ fontSize: 15, marginBottom: 12 }}>Popular Courses</h3>
-          {popular.length === 0 ? (
+          <h3 style={{ fontSize: 15, marginBottom: 12 }}>
+            {featured.some((c) => c.featured) ? 'Featured & New Courses' : 'Popular Courses'}
+          </h3>
+          {featured.length === 0 ? (
             <div className="small muted">No courses yet.</div>
           ) : (
-            popular.map((c) => (
+            featured.map((c) => (
               <div key={c._id} className="flex justify-between small" style={{ padding: '9px 0', borderBottom: '1px dashed var(--line)' }}>
-                <span>{c.title} <span className="muted">— {c.category}</span></span>
+                <span>
+                  {c.featured && <span style={{ marginRight: 4 }}>⭐</span>}
+                  {c.title} <span className="muted">— {c.category}</span>
+                </span>
                 <span className="mono muted">{c.learners.toLocaleString()} learners</span>
               </div>
             ))

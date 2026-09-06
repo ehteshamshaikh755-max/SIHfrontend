@@ -18,18 +18,25 @@ router.get('/stats', async (req, res) => {
   }
 });
 
-// GET /api/home/popular — top 5 most-enrolled approved courses
-router.get('/popular', async (req, res) => {
+// GET /api/home/featured — admin-curated featured courses, falling back to
+// most-enrolled approved courses if none are marked featured yet.
+router.get('/featured', async (req, res) => {
   try {
-    const courses = await Course.find({ status: 'Approved' })
-      .sort({ learners: -1 })
-      .limit(5)
+    let courses = await Course.find({ status: 'Approved', featured: true })
       .populate('trainer', 'name')
-      .select('title category difficulty thumbnail learners rating');
+      .select('title category difficulty thumbnail learners rating featured');
+
+    if (courses.length === 0) {
+      courses = await Course.find({ status: 'Approved' })
+        .sort({ learners: -1 })
+        .limit(5)
+        .populate('trainer', 'name')
+        .select('title category difficulty thumbnail learners rating featured');
+    }
 
     res.json(courses);
   } catch (err) {
-    res.status(500).json({ message: 'Failed to fetch popular courses', error: err.message });
+    res.status(500).json({ message: 'Failed to fetch featured courses', error: err.message });
   }
 });
 

@@ -54,6 +54,7 @@ const courseSchema = new mongoose.Schema(
       enum: ['Draft', 'Pending Approval', 'Approved', 'Rejected'],
       default: 'Draft',
     },
+    featured: { type: Boolean, default: false },
     submittedOn: { type: Date, default: null },
     rejectionReason: { type: String, default: '' },
 
@@ -65,6 +66,7 @@ const courseSchema = new mongoose.Schema(
     reviews: [reviewSchema],
     quizQuestions: [questionSchema],
     passingScorePct: { type: Number, default: 60 },
+    quizDeadline: { type: Date, default: null },
   },
   { timestamps: true }
 );

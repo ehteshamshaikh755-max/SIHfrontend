@@ -71,6 +71,15 @@ router.patch('/trainers/:id/reject', async (req, res) => {
   res.json(user);
 });
 
+// PATCH /api/admin/courses/:id/featured — toggle featured status for homepage
+router.patch('/courses/:id/featured', async (req, res) => {
+  const course = await Course.findById(req.params.id);
+  if (!course) return res.status(404).json({ message: 'Course not found' });
+  course.featured = !course.featured;
+  await course.save();
+  res.json(course);
+});
+
 // ---- Platform analytics ----
 
 // GET /api/admin/analytics
