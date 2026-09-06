@@ -87,6 +87,7 @@ router.post('/login', async (req, res) => {
         qualifications: user.qualifications,
         workExperience: user.workExperience,
         interests: user.interests,
+        trainerCompetencies: user.trainerCompetencies,
       },
     });
   } catch (err) {
@@ -137,10 +138,45 @@ router.patch('/me', protect, async (req, res) => {
         qualifications: user.qualifications,
         workExperience: user.workExperience,
         interests: user.interests,
+        trainerCompetencies: user.trainerCompetencies,
       },
     });
   } catch (err) {
     res.status(500).json({ message: 'Failed to update profile', error: err.message });
+  }
+});
+
+// PATCH /api/auth/me/competencies — trainer-only: update subject competencies
+// Body: { competencies: [{ subject, level }] }
+router.patch('/me/competencies', protect, async (req, res) => {
+  try {
+    if (req.user.role !== 'trainer') {
+      return res.status(403).json({ message: 'Only trainers can set competencies' });
+    }
+    const { competencies } = req.body;
+    const user = await User.findById(req.user._id);
+    user.trainerCompetencies = competencies || [];
+    await user.save();
+    res.json({ trainerCompetencies: user.trainerCompetencies });
+  } catch (err) {
+    res.status(500).json({ message: 'Failed to update competencies', error: err.message });
+  }
+});
+
+// GET /api/auth/trainers/by-subject?subject=X — admin-only: find trainers competent in a subject
+router.get('/trainers/by-subject', protect, async (req, res) => {
+  try {
+    if (req.user.role !== 'admin') {
+      return res.status(403).json({ message: 'Admin access required' });
+    }
+    const { subject } = req.query;
+    const filter = { role: 'trainer', status: 'approved' };
+    if (subject) filter['trainerCompetencies.subject'] = { $regex: subject, $options: 'i' };
+
+    const trainers = await User.find(filter).select('name email dept trainerCompetencies contributionCredits');
+    res.json(trainers);
+  } catch (err) {
+    res.status(500).json({ message: 'Failed to fetch trainers', error: err.message });
   }
 });
 

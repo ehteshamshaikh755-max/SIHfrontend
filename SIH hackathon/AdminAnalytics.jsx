@@ -9,6 +9,11 @@ export default function AdminAnalytics() {
   const [a, setA] = useState(null);
   const [loading, setLoading] = useState(true);
 
+  const [subjectQuery, setSubjectQuery] = useState('');
+  const [matchedTrainers, setMatchedTrainers] = useState([]);
+  const [searching, setSearching] = useState(false);
+  const [searched, setSearched] = useState(false);
+
   useEffect(() => {
     fetch(`${API_URL}/admin/analytics`, {
       headers: { 'Authorization': `Bearer ${token}` },
@@ -18,6 +23,22 @@ export default function AdminAnalytics() {
       .catch((err) => console.error('Failed to load admin analytics', err))
       .finally(() => setLoading(false));
   }, [token]);
+
+  async function findTrainers() {
+    setSearching(true);
+    setSearched(true);
+    try {
+      const res = await fetch(`${API_URL}/auth/trainers/by-subject?subject=${encodeURIComponent(subjectQuery)}`, {
+        headers: { Authorization: `Bearer ${token}` },
+      });
+      const data = await res.json();
+      setMatchedTrainers(Array.isArray(data) ? data : []);
+    } catch {
+      setMatchedTrainers([]);
+    } finally {
+      setSearching(false);
+    }
+  }
 
   if (loading) return <div className="page">Loading analytics...</div>;
   if (!a) return <div className="page">Failed to load analytics.</div>;
@@ -83,6 +104,44 @@ export default function AdminAnalytics() {
             ))
           )}
         </div>
+      </div>
+
+      <div className="card card-pad" style={{ marginTop: 20 }}>
+        <h3 style={{ fontSize: 15, marginBottom: 6 }}>Find Trainers by Subject</h3>
+        <p className="small muted" style={{ marginBottom: 12 }}>
+          Search trainer competencies to identify who's suited to teach a given subject.
+        </p>
+        <div className="flex gap-8" style={{ marginBottom: 14 }}>
+          <input
+            type="text"
+            placeholder="e.g. Cybersecurity"
+            value={subjectQuery}
+            onChange={(e) => setSubjectQuery(e.target.value)}
+            style={{ flex: 1 }}
+          />
+          <button className="btn btn-accent btn-sm" onClick={findTrainers} disabled={searching}>
+            {searching ? 'Searching…' : 'Search'}
+          </button>
+        </div>
+
+        {searched && !searching && matchedTrainers.length === 0 && (
+          <p className="small muted">No trainers found with that competency.</p>
+        )}
+
+        {matchedTrainers.map((t) => (
+          <div key={t._id} className="flex justify-between items-center" style={{ padding: '9px 0', borderBottom: '1px dashed var(--line)' }}>
+            <div>
+              <div style={{ fontWeight: 600, fontSize: 13.5 }}>{t.name}</div>
+              <div className="small muted">{t.email}{t.dept ? ` · ${t.dept}` : ''}</div>
+              <div className="flex gap-6 wrap" style={{ marginTop: 4 }}>
+                {(t.trainerCompetencies || []).map((c, i) => (
+                  <span key={i} className="pill" style={{ fontSize: 11 }}>{c.subject} — {c.level}</span>
+                ))}
+              </div>
+            </div>
+            <span className="mono muted small">{t.contributionCredits} CC</span>
+          </div>
+        ))}
       </div>
     </div>
   );
