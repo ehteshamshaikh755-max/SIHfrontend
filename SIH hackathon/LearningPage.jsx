@@ -102,15 +102,22 @@ export default function LearningPage() {
 
       <div className="grid" style={{ gridTemplateColumns: '2.2fr 1fr', alignItems: 'start', marginTop: 18 }}>
         <div>
-          <div className="video-player">
-            {current?.videoUrl ? (
-              <video key={current._id} src={current.videoUrl} controls style={{ width: '100%', borderRadius: 8, display: 'block' }} />
-            ) : (
+          {current?.videoUrl ? (
+            <div style={{ background: '#000', borderRadius: 12, overflow: 'hidden' }}>
+              <video
+                key={current._id}
+                src={current.videoUrl}
+                controls
+                style={{ width: '100%', display: 'block' }}
+              />
+            </div>
+          ) : (
+            <div className="video-player">
               <div style={{ padding: 40, textAlign: 'center', color: 'var(--muted)' }}>
                 No video uploaded for this lesson yet.
               </div>
-            )}
-          </div>
+            </div>
+          )}
           <h2 style={{ marginTop: 16, fontSize: 19 }}>{current?.title}</h2>
           <p className="small muted" style={{ marginTop: 4 }}>{current?.moduleTitle} · {current?.duration}</p>
 
