@@ -179,5 +179,53 @@ router.get('/trainers/by-subject', protect, async (req, res) => {
     res.status(500).json({ message: 'Failed to fetch trainers', error: err.message });
   }
 });
+// POST /api/auth/trainers/:id/follow — trainee follows a trainer
+router.post('/trainers/:id/follow', protect, async (req, res) => {
+  try {
+    if (req.user.role !== 'trainee') {
+      return res.status(403).json({ message: 'Only trainees can follow trainers' });
+    }
+    const trainer = await User.findById(req.params.id);
+    if (!trainer || trainer.role !== 'trainer') {
+      return res.status(404).json({ message: 'Trainer not found' });
+    }
+    if (!trainer.followers.includes(req.user._id)) {
+      trainer.followers.push(req.user._id);
+      await trainer.save();
+    }
+    res.json({ followerCount: trainer.followers.length, verified: trainer.followers.length >= 5 });
+  } catch (err) {
+    res.status(500).json({ message: 'Failed to follow trainer', error: err.message });
+  }
+});
+
+// POST /api/auth/trainers/:id/unfollow — trainee unfollows a trainer
+router.post('/trainers/:id/unfollow', protect, async (req, res) => {
+  try {
+    const trainer = await User.findById(req.params.id);
+    if (!trainer || trainer.role !== 'trainer') {
+      return res.status(404).json({ message: 'Trainer not found' });
+    }
+    trainer.followers = trainer.followers.filter((id) => String(id) !== String(req.user._id));
+    await trainer.save();
+    res.json({ followerCount: trainer.followers.length, verified: trainer.followers.length >= 5 });
+  } catch (err) {
+    res.status(500).json({ message: 'Failed to unfollow trainer', error: err.message });
+  }
+});
+
+// GET /api/auth/trainers/:id/follow-status — check follower count + whether current user follows
+router.get('/trainers/:id/follow-status', protect, async (req, res) => {
+  try {
+    const trainer = await User.findById(req.params.id);
+    if (!trainer || trainer.role !== 'trainer') {
+      return res.status(404).json({ message: 'Trainer not found' });
+    }
+    const isFollowing = trainer.followers.some((id) => String(id) === String(req.user._id));
+    res.json({ followerCount: trainer.followers.length, verified: trainer.followers.length >= 5, isFollowing });
+  } catch (err) {
+    res.status(500).json({ message: 'Failed to fetch follow status', error: err.message });
+  }
+});
 
 export default router;

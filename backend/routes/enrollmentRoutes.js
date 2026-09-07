@@ -2,6 +2,7 @@ import { updateSkillsOnCompletion } from '../utils/skills.js';
 import express from 'express';
 import Enrollment from '../models/Enrollment.js';
 import Course from '../models/Course.js';
+import User from '../models/User.js';
 import { protect, requireRole } from '../middleware/auth.js';
 import { awardCredits, awardContributionCredits } from '../utils/credits.js';
 
@@ -18,6 +19,20 @@ router.post('/', protect, requireRole('trainee'), async (req, res) => {
 
     const existing = await Enrollment.findOne({ user: req.user._id, course: courseId });
     if (existing) return res.status(409).json({ message: 'Already enrolled' });
+
+    // If this course has a credit cost, verify balance and redeem before enrolling
+    if (course.creditCost > 0) {
+      const trainee = await User.findById(req.user._id);
+      if ((trainee.credits || 0) < course.creditCost) {
+        return res.status(400).json({
+          message: `Not enough credits — you need ${course.creditCost} CC but have ${trainee.credits || 0} CC`,
+        });
+      }
+      await awardCredits(
+        req.user._id, -course.creditCost,
+        `Redeemed for Course — ${course.title}`, '🪙'
+      );
+    }
 
     const enrollment = await Enrollment.create({ user: req.user._id, course: courseId });
 

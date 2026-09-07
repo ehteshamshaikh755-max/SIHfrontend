@@ -15,6 +15,8 @@ export default function CourseDetails() {
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState('');
   const [enrolling, setEnrolling] = useState(false);
+  const [followStatus, setFollowStatus] = useState(null); // { followerCount, verified, isFollowing }
+  const [followLoading, setFollowLoading] = useState(false);
 
   const fetchData = useCallback(async () => {
     setLoading(true);
@@ -41,6 +43,16 @@ export default function CourseDetails() {
   }, [id, token]);
 
   useEffect(() => { fetchData(); }, [fetchData]);
+
+  useEffect(() => {
+    if (!course?.trainer?._id || !token) return;
+    fetch(`${API_URL}/auth/trainers/${course.trainer._id}/follow-status`, {
+      headers: { Authorization: `Bearer ${token}` },
+    })
+      .then((res) => res.json())
+      .then(setFollowStatus)
+      .catch(() => {});
+  }, [course, token]);
 
   if (loading) return <div className="page"><p className="small muted">Loading course…</p></div>;
   if (error || !course) return <div className="page"><p>{error || 'Course not found.'}</p></div>;
@@ -72,6 +84,25 @@ export default function CourseDetails() {
       alert(err.message);
     } finally {
       setEnrolling(false);
+    }
+  }
+
+  async function handleFollowToggle() {
+    if (!course?.trainer?._id) return;
+    setFollowLoading(true);
+    const action = followStatus?.isFollowing ? 'unfollow' : 'follow';
+    try {
+      const res = await fetch(`${API_URL}/auth/trainers/${course.trainer._id}/${action}`, {
+        method: 'POST',
+        headers: { Authorization: `Bearer ${token}` },
+      });
+      const data = await res.json();
+      if (!res.ok) throw new Error(data.message || `Failed to ${action}`);
+      setFollowStatus((prev) => ({ ...prev, ...data, isFollowing: action === 'follow' }));
+    } catch (err) {
+      alert(err.message);
+    } finally {
+      setFollowLoading(false);
     }
   }
 
@@ -148,16 +179,33 @@ export default function CourseDetails() {
           <div className="flex gap-10 items-center" style={{ marginTop: 8 }}>
             <div className="avatar" style={{ background: 'var(--navy)' }}>{trainerName.split(' ').map((w) => w[0]).slice(0, 2).join('')}</div>
             <div>
-              <div style={{ fontWeight: 700, fontSize: 13.5 }}>{trainerName}</div>
+              <div style={{ fontWeight: 700, fontSize: 13.5, display: 'flex', alignItems: 'center', gap: 6 }}>
+                {trainerName}
+                {followStatus?.verified && <span title="Verified Trainer" style={{ color: 'var(--teal)' }}>✓</span>}
+              </div>
               <div className="small muted">Certified Domain Trainer</div>
             </div>
           </div>
+          {course.trainer?._id && (
+            <button
+              className="btn btn-block"
+              style={{ marginTop: 10 }}
+              onClick={handleFollowToggle}
+              disabled={followLoading}
+            >
+              {followLoading
+                ? '...'
+                : followStatus?.isFollowing
+                ? 'Following ✓'
+                : `Follow${followStatus?.followerCount ? ` (${followStatus.followerCount})` : ''}`}
+            </button>
+          )}
           <div className="divider" />
           {enrollment ? (
             <button className="btn btn-accent btn-block" onClick={handleContinue}>{enrollment.progressPct === 100 ? '✓ Review Course' : 'Continue Learning'}</button>
           ) : (
             <button className="btn btn-accent btn-block" onClick={handleEnroll} disabled={enrolling}>
-              {enrolling ? 'Enrolling…' : 'Enroll Now'}
+              {enrolling ? 'Enrolling…' : course.creditCost > 0 ? `Redeem for ${course.creditCost} CC` : 'Enroll Now'}
             </button>
           )}
           <p className="small muted" style={{ marginTop: 10, textAlign: 'center' }}>Earn up to <strong>180 CC</strong> for completing this course</p>

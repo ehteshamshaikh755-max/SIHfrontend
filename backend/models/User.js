@@ -38,6 +38,7 @@ const userSchema = new mongoose.Schema(
         level: { type: String, enum: ['Beginner', 'Intermediate', 'Advanced', 'Expert'], default: 'Intermediate' },
       },
     ],
+    followers: [{ type: mongoose.Schema.Types.ObjectId, ref: 'User' }], // trainees following this trainer
   },
   { timestamps: true }
 );
