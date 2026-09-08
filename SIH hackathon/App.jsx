@@ -26,6 +26,7 @@ import Achievements from './Achievements';
 import Leaderboard from './Leaderboard';
 import Certificates from './Certificates';
 import Skills from './Skills';
+import AIChatWidget from './AIChatWidget';
 
 // Sends a logged-in user to their role's home screen.
 function RoleHome() {
@@ -99,6 +100,7 @@ export default function App() {
       <HashRouter>
         <Shell />
       </HashRouter>
+      <AIChatWidget />
     </AppProvider>
   );
 }
