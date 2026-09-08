@@ -12,6 +12,7 @@ export default function MyCourses() {
   const [error, setError] = useState('');
   const [confirmDelete, setConfirmDelete] = useState(null);
   const [filter, setFilter] = useState('All');
+  const [doubtCounts, setDoubtCounts] = useState({});
   const nav = useNavigate();
 
   const fetchMine = useCallback(async () => {
@@ -32,6 +33,23 @@ export default function MyCourses() {
   }, [token]);
 
   useEffect(() => { fetchMine(); }, [fetchMine]);
+const fetchDoubtCounts = useCallback(async () => {
+  try {
+    const res = await fetch(`${API_URL}/comments/trainer/summary`, {
+      headers: { Authorization: `Bearer ${token}` },
+    });
+    const data = await res.json();
+    if (res.ok) {
+      const map = {};
+      data.forEach((d) => { map[d._id] = d.count; });
+      setDoubtCounts(map);
+    }
+  } catch (err) {
+    console.error(err);
+  }
+}, [token]);
+
+useEffect(() => { fetchDoubtCounts(); }, [fetchDoubtCounts]);
 
   const filtered = filter === 'All' ? mine : mine.filter((c) => c.status === filter);
   const counts = ['All', 'Draft', 'Pending Approval', 'Approved', 'Rejected'].map((s) => ({
@@ -112,6 +130,11 @@ export default function MyCourses() {
                   <StatusBadge status={c.status} />
                   {c.submittedOn && <span className="small muted mono">Sub. {new Date(c.submittedOn).toLocaleDateString()}</span>}
                 </div>
+                {doubtCounts[c._id] > 0 && (
+                  <div className="small" style={{ background: '#FFF4E0', color: '#B8720B', padding: '4px 8px', borderRadius: 6, marginTop: 6, display: 'inline-block', fontWeight: 700 }}>
+                    💬 {doubtCounts[c._id]} doubt{doubtCounts[c._id] > 1 ? 's' : ''} to answer
+                  </div>
+                )}
                 <h3>{c.title}</h3>
                 <div className="course-meta"><span>⏱ {c.duration}</span><span>📶 {c.difficulty}</span></div>
                 {c.status === 'Rejected' && c.rejectionReason && (
