@@ -55,7 +55,7 @@ router.post('/', protect, requireRole('trainer'), async (req, res) => {
     const {
       title, description, category, difficulty, duration, thumbnail,
       objectives, modules, skillsGained, submitForApproval,
-      quizQuestions, passingScorePct,
+      quizQuestions, passingScorePct,creditsCost,
     } = req.body;
 
     if (!title || !description || !category || !difficulty) {
@@ -69,6 +69,7 @@ router.post('/', protect, requireRole('trainer'), async (req, res) => {
       skillsGained: skillsGained || [],
       quizQuestions: quizQuestions || [],
       passingScorePct: passingScorePct || 60,
+      creditsCost: creditsCost || 0,
       trainer: req.user._id,
       status: submitForApproval ? 'Pending Approval' : 'Draft',
       submittedOn: submitForApproval ? new Date() : null,
@@ -92,7 +93,7 @@ router.patch('/:id', protect, requireRole('trainer'), async (req, res) => {
     const editable = [
       'title', 'description', 'category', 'difficulty', 'duration',
       'thumbnail', 'objectives', 'modules', 'skillsGained',
-      'quizQuestions', 'passingScorePct', 'quizDeadline',
+      'quizQuestions', 'passingScorePct', 'quizDeadline', 'creditsCost',
     ];
     editable.forEach((field) => {
       if (req.body[field] !== undefined) course[field] = req.body[field];
