@@ -99,7 +99,11 @@ export default function CourseListing() {
                 icon={enrolled ? <ProgressBar pct={enrolled.progressPct} /> : null}
                 footer={
                   <button className="btn btn-block btn-sm" style={{ background: enrolled ? 'var(--teal-soft)' : 'var(--navy-deep)', color: enrolled ? 'var(--teal)' : '#fff' }}>
-                    {enrolled ? (enrolled.progressPct === 100 ? '✓ Completed — Review' : `Continue (${enrolled.progressPct}%)`) : 'Enroll'}
+                    {enrolled
+                      ? (enrolled.progressPct === 100 ? '✓ Completed — Review' : `Continue (${enrolled.progressPct}%)`)
+                      : c.creditsCost > 0
+                        ? `🔓 Unlock — ${c.creditsCost} CC`
+                        : 'Enroll'}
                   </button>
                 } />
             );
