@@ -44,6 +44,18 @@ export default function LearningPage() {
   }, [courseId, token]);
 
   useEffect(() => { fetchData(); }, [fetchData]);
+  const fetchComments = useCallback(async () => {
+  if (!lessonId) return;
+  try {
+    const res = await fetch(`${API_URL}/comments/${courseId}/${lessonId}`);
+    const data = await res.json();
+    if (res.ok) setComments(data);
+  } catch (err) {
+    console.error(err);
+  }
+}, [courseId, lessonId]);
+
+useEffect(() => { fetchComments(); }, [fetchComments]);
 
   if (loading) return <div className="page"><p className="small muted">Loading lesson…</p></div>;
   if (error || !course) return <div className="page"><p>{error || 'Course not found.'}</p></div>;
@@ -61,19 +73,7 @@ export default function LearningPage() {
     const prev = flatLessons[idx - 1];
     return completedLessonIds.includes(prev._id) || idx <= currentIdx;
   };
-  const fetchComments = useCallback(async () => {
-  if (!current?._id) return;
-  try {
-    const res = await fetch(`${API_URL}/comments/${courseId}/${current._id}`);
-    const data = await res.json();
-    if (res.ok) setComments(data);
-  } catch (err) {
-    console.error(err);
-  }
-}, [courseId, current?._id]);
-
-useEffect(() => { fetchComments(); }, [fetchComments]);
-
+  
   async function handleComplete() {
     setSaving(true);
     try {
@@ -112,7 +112,7 @@ useEffect(() => { fetchComments(); }, [fetchComments]);
         'Content-Type': 'application/json',
         Authorization: `Bearer ${token}`,
       },
-      body: JSON.stringify({ courseId, lessonId: current._id, text: newComment }),
+      body: JSON.stringify({ courseId, lessonId, text: newComment }),
     });
     const data = await res.json();
     if (!res.ok) throw new Error(data.message || 'Failed to post comment');
