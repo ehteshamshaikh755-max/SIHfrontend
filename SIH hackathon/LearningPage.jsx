@@ -15,6 +15,9 @@ export default function LearningPage() {
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState('');
   const [saving, setSaving] = useState(false);
+  const [comments, setComments] = useState([]);
+  const [newComment, setNewComment] = useState('');
+  const [postingComment, setPostingComment] = useState(false);  
 
   const fetchData = useCallback(async () => {
     setLoading(true);
@@ -58,6 +61,18 @@ export default function LearningPage() {
     const prev = flatLessons[idx - 1];
     return completedLessonIds.includes(prev._id) || idx <= currentIdx;
   };
+  const fetchComments = useCallback(async () => {
+  if (!current?._id) return;
+  try {
+    const res = await fetch(`${API_URL}/comments/${courseId}/${current._id}`);
+    const data = await res.json();
+    if (res.ok) setComments(data);
+  } catch (err) {
+    console.error(err);
+  }
+}, [courseId, current?._id]);
+
+useEffect(() => { fetchComments(); }, [fetchComments]);
 
   async function handleComplete() {
     setSaving(true);
@@ -87,6 +102,28 @@ export default function LearningPage() {
       setSaving(false);
     }
   }
+  async function handlePostComment() {
+  if (!newComment.trim()) return;
+  setPostingComment(true);
+  try {
+    const res = await fetch(`${API_URL}/comments`, {
+      method: 'POST',
+      headers: {
+        'Content-Type': 'application/json',
+        Authorization: `Bearer ${token}`,
+      },
+      body: JSON.stringify({ courseId, lessonId: current._id, text: newComment }),
+    });
+    const data = await res.json();
+    if (!res.ok) throw new Error(data.message || 'Failed to post comment');
+    setComments((prev) => [...prev, data]);
+    setNewComment('');
+  } catch (err) {
+    alert(err.message);
+  } finally {
+    setPostingComment(false);
+  }
+}
 
   return (
     <div className="page" style={{ maxWidth: 1160 }}>
@@ -140,7 +177,43 @@ export default function LearningPage() {
               {saving ? 'Saving…' : completedLessonIds.includes(current?._id) ? 'Next →' : 'Mark Complete & Continue →'}
             </button>
           </div>
-        </div>
+
+          <div className="card card-pad" style={{ marginTop: 24 }}>
+            <h3 style={{ fontSize: 15, marginBottom: 12 }}>Doubts & Discussion</h3>
+
+            <div style={{ display: 'flex', gap: 8, marginBottom: 16 }}>
+              <input
+                type="text"
+                placeholder="Ask a doubt about this lesson…"
+                value={newComment}
+                onChange={(e) => setNewComment(e.target.value)}
+                onKeyDown={(e) => e.key === 'Enter' && handlePostComment()}
+                style={{ flex: 1 }}
+              />
+              <button className="btn btn-accent btn-sm" onClick={handlePostComment} disabled={postingComment}>
+                {postingComment ? '…' : 'Post'}
+              </button>
+            </div>
+
+            {comments.length === 0 && (
+              <p className="small muted">No questions yet. Be the first to ask!</p>
+            )}
+
+            <div style={{ display: 'flex', flexDirection: 'column', gap: 12 }}>
+              {comments.map((c) => (
+                <div key={c._id} style={{ borderBottom: '1px solid var(--border, #eee)', paddingBottom: 10 }}>
+                  <div className="flex justify-between items-center">
+                    <span className="small" style={{ fontWeight: 700 }}>
+                      {c.userName} {c.userRole === 'trainer' && <span className="pill" style={{ marginLeft: 6, fontSize: 10 }}>Trainer</span>}
+                    </span>
+                    <span className="small muted">{new Date(c.createdAt).toLocaleDateString()}</span>
+                  </div>
+                  <p className="small" style={{ marginTop: 4 }}>{c.text}</p>
+                </div>
+              ))}
+            </div>
+          </div>
+          </div>
 
         <div className="card card-pad">
           <h3 style={{ fontSize: 14.5, marginBottom: 10 }}>Course Modules</h3>

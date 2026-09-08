@@ -17,6 +17,7 @@ import leaderboardRoutes from './routes/leaderboardRoutes.js';
 import trainerStatsRoutes from './routes/trainerStatsRoutes.js';
 import announcementRoutes from './routes/announcementRoutes.js';
 import homeRoutes from './routes/homeRoutes.js';
+import commentRoutes from './routes/commentRoutes.js';
 
 dotenv.config();
 connectDB();
@@ -40,6 +41,7 @@ app.use('/api/leaderboard', leaderboardRoutes);
 app.use('/api/trainer-stats', trainerStatsRoutes);
 app.use('/api/announcements', announcementRoutes);
 app.use('/api/home', homeRoutes);
+app.use('/api/comments', commentRoutes);
 
 app.get('/', (req, res) => res.send('Capacity Connect API is running'));
 
