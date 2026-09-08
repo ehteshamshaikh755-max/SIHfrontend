@@ -12,7 +12,7 @@ const CLOUDINARY_UPLOAD_PRESET = 'capacity_connect_videos';
 
 const emptyDraft = {
   title: '', description: '', category: CATEGORIES[0], difficulty: DIFFICULTIES[0], duration: '',
-  thumbnail: 'navy-teal', objectives: [''], modules: [], skillsGained: [], creditCost: 0,
+  thumbnail: 'navy-teal', objectives: [''], modules: [], skillsGained: [],
 };
 
 export default function CreateCourse() {
@@ -61,7 +61,6 @@ export default function CreateCourse() {
       difficulty: draft.difficulty,
       duration: draft.duration,
       thumbnail: draft.thumbnail,
-      creditCost: Number(draft.creditCost) || 0,
       quizDeadline: draft.quizDeadline || null,
       objectives: draft.objectives.filter(Boolean),
       modules: draft.modules.map((m) => ({
@@ -243,17 +242,6 @@ function DetailsStep({ draft, set, onNext }) {
         <div className="field">
           <label>Estimated Duration</label>
           <input type="text" placeholder="e.g. 6h 20m" value={draft.duration} onChange={(e) => set({ duration: e.target.value })} />
-        </div>
-        <div className="field">
-          <label>Credit Cost (optional)</label>
-          <input
-            type="number"
-            min="0"
-            placeholder="0"
-            value={draft.creditCost || ''}
-            onChange={(e) => set({ creditCost: e.target.value ? Math.max(0, parseInt(e.target.value, 10)) : 0 })}
-          />
-          <span className="hint">Leave at 0 for free enrollment. Set a value to require trainees to redeem that many CC to unlock this course.</span>
         </div>
         <div className="field">
           <label>Quiz Deadline (optional)</label>
@@ -689,7 +677,6 @@ function PreviewStep({ draft, quiz, onBack, onNext }) {
           <span className="pill">⏱ {draft.duration || '—'}</span>
           <span className="pill">{draft.modules.reduce((n, m) => n + m.lessons.length, 0)} lessons</span>
           <span className="pill">{quiz.length} quiz questions</span>
-          {draft.creditCost > 0 && <span className="pill">🪙 {draft.creditCost} CC to unlock</span>}
         </div>
 
         <div className="divider" />

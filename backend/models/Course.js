@@ -46,7 +46,6 @@ const courseSchema = new mongoose.Schema(
     duration: { type: String, default: '' }, // display string e.g. "6h 20m"
     thumbnail: { type: String, default: '' },
     objectives: [String],
-    creditCost: { type: Number, default: 0 }, // 0 = free/normal enroll; >0 = trainee must redeem this many credits
 
     trainer: { type: mongoose.Schema.Types.ObjectId, ref: 'User', required: true },
 
