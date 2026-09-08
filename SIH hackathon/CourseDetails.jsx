@@ -195,7 +195,11 @@ export default function CourseDetails() {
             <button className="btn btn-accent btn-block" onClick={handleContinue}>{enrollment.progressPct === 100 ? '✓ Review Course' : 'Continue Learning'}</button>
           ) : (
             <button className="btn btn-accent btn-block" onClick={handleEnroll} disabled={enrolling}>
-              {enrolling ? 'Enrolling…' : 'Enroll Now'}
+              {enrolling
+                  ? 'Enrolling…'
+                  : course.creditsCost > 0
+                    ? `🔓 Unlock for ${course.creditsCost} CC`
+                    : 'Enroll Now'}
             </button>
           )}
           <p className="small muted" style={{ marginTop: 10, textAlign: 'center' }}>Earn up to <strong>180 CC</strong> for completing this course</p>
