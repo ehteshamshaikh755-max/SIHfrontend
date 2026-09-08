@@ -12,7 +12,7 @@ const CLOUDINARY_UPLOAD_PRESET = 'capacity_connect_videos';
 
 const emptyDraft = {
   title: '', description: '', category: CATEGORIES[0], difficulty: DIFFICULTIES[0], duration: '',
-  thumbnail: 'navy-teal', objectives: [''], modules: [], skillsGained: [],
+  thumbnail: 'navy-teal', objectives: [''], modules: [], skillsGained: [], creditsCost: 0,
 };
 
 export default function CreateCourse() {
@@ -61,7 +61,7 @@ export default function CreateCourse() {
       difficulty: draft.difficulty,
       duration: draft.duration,
       thumbnail: draft.thumbnail,
-      quizDeadline: draft.quizDeadline || null,
+      creditsCost: draft.creditsCost || 0,
       objectives: draft.objectives.filter(Boolean),
       modules: draft.modules.map((m) => ({
         title: m.title,
@@ -251,6 +251,17 @@ function DetailsStep({ draft, set, onNext }) {
             onChange={(e) => set({ quizDeadline: e.target.value ? new Date(e.target.value).toISOString() : null })}
           />
           <span className="hint">Trainees must complete the quiz before this date/time. Leave blank for no deadline.</span>
+        </div>
+        <div className="field">
+          <label>Credits to Unlock (optional)</label>
+          <input
+            type="number"
+            min="0"
+            placeholder="0 = free course"
+            value={draft.creditsCost || 0}
+            onChange={(e) => set({ creditsCost: Math.max(0, parseInt(e.target.value) || 0) })}
+          />
+          <span className="hint">Trainees must spend this many Capacity Credits to unlock the course. Leave at 0 for a free course.</span>
         </div>
         <div className="field">
           <label>Thumbnail Style</label>

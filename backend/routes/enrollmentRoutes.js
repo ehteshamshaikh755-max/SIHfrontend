@@ -2,6 +2,8 @@ import { updateSkillsOnCompletion } from '../utils/skills.js';
 import express from 'express';
 import Enrollment from '../models/Enrollment.js';
 import Course from '../models/Course.js';
+import User from '../models/User.js';
+import CreditTransaction from '../models/CreditTransaction.js';
 import { protect, requireRole } from '../middleware/auth.js';
 import { awardCredits, awardContributionCredits } from '../utils/credits.js';
 
@@ -18,6 +20,28 @@ router.post('/', protect, requireRole('trainee'), async (req, res) => {
 
     const existing = await Enrollment.findOne({ user: req.user._id, course: courseId });
     if (existing) return res.status(409).json({ message: 'Already enrolled' });
+
+    // If this course has a credit cost, atomically deduct it from the trainee's
+    // balance before enrolling — same safe pattern as reward redemption, so it
+    // can't be double-spent under concurrent requests.
+    if (course.creditsCost > 0) {
+      const updatedUser = await User.findOneAndUpdate(
+        { _id: req.user._id, credits: { $gte: course.creditsCost } },
+        { $inc: { credits: -course.creditsCost } },
+        { new: true }
+      );
+      if (!updatedUser) {
+        return res.status(400).json({ message: 'Insufficient credits to unlock this course' });
+      }
+
+      await CreditTransaction.create({
+        user: req.user._id,
+        label: `Course Unlocked — ${course.title}`,
+        amount: -course.creditsCost,
+        type: 'redeem',
+        icon: '🔓',
+      });
+    }
 
     const enrollment = await Enrollment.create({ user: req.user._id, course: courseId });
 

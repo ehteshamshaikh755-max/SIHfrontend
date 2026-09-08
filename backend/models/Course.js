@@ -66,6 +66,7 @@ const courseSchema = new mongoose.Schema(
     reviews: [reviewSchema],
     quizQuestions: [questionSchema],
     passingScorePct: { type: Number, default: 60 },
+    creditsCost: { type: Number, default: 0 }, // 0 = free course, >0 = costs credits to unlock
     quizDeadline: { type: Date, default: null },
   },
   { timestamps: true }
