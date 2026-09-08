@@ -120,7 +120,10 @@ useEffect(() => { fetchDoubtCounts(); }, [fetchDoubtCounts]);
 
       {!loading && !error && filtered.length > 0 && (
         <div className="grid grid-3">
-          {filtered.map((c) => (
+          {filtered.map((c) => {
+            const firstLessonId = c.modules?.[0]?.lessons?.[0]?._id;
+            return(
+            
             <div key={c._id} className="card course-card">
               <div className="course-thumb" style={{ background: 'linear-gradient(135deg, var(--navy), var(--teal))' }}>
                 <span className="cat-tag">{c.category}</span>
@@ -130,11 +133,12 @@ useEffect(() => { fetchDoubtCounts(); }, [fetchDoubtCounts]);
                   <StatusBadge status={c.status} />
                   {c.submittedOn && <span className="small muted mono">Sub. {new Date(c.submittedOn).toLocaleDateString()}</span>}
                 </div>
-                {doubtCounts[c._id] > 0 && (
-                  <div className="small" style={{ background: '#FFF4E0', color: '#B8720B', padding: '4px 8px', borderRadius: 6, marginTop: 6, display: 'inline-block', fontWeight: 700 }}>
+                {doubtCounts[c._id] > 0 && firstLessonId && (
+                  <Link to={`/learn/${c._id}/${firstLessonId}`} className="small" style={{ background: '#FFF4E0', color: '#B8720B', padding: '4px 8px', borderRadius: 6, marginTop: 6, display: 'inline-block', fontWeight: 700, textDecoration: 'none' }}>
                     💬 {doubtCounts[c._id]} doubt{doubtCounts[c._id] > 1 ? 's' : ''} to answer
-                  </div>
+                  </Link>
                 )}
+              
                 <h3>{c.title}</h3>
                 <div className="course-meta"><span>⏱ {c.duration}</span><span>📶 {c.difficulty}</span></div>
                 {c.status === 'Rejected' && c.rejectionReason && (
@@ -155,7 +159,8 @@ useEffect(() => { fetchDoubtCounts(); }, [fetchDoubtCounts]);
                 </div>
               </div>
             </div>
-          ))}
+          );
+          })}     
         </div>
       )}
 

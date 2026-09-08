@@ -73,7 +73,7 @@ function Shell() {
 
                 <Route path="/courses" element={<ProtectedRoute allowedRoles={['trainee']}><CourseListing /></ProtectedRoute>} />
                 <Route path="/courses/:id" element={<ProtectedRoute allowedRoles={['trainee']}><CourseDetails /></ProtectedRoute>} />
-                <Route path="/learn/:courseId/:lessonId" element={<ProtectedRoute allowedRoles={['trainee']}><LearningPage /></ProtectedRoute>} />
+                <Route path="/learn/:courseId/:lessonId" element={<ProtectedRoute allowedRoles={['trainee', 'trainer']}><LearningPage /></ProtectedRoute>} />
                 <Route path="/quiz/:courseId" element={<ProtectedRoute allowedRoles={['trainee']}><Quiz /></ProtectedRoute>} />
                 <Route path="/complete/:courseId" element={<ProtectedRoute allowedRoles={['trainee']}><CourseCompletion /></ProtectedRoute>} />
 
