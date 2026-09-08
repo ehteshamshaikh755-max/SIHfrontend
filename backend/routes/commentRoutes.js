@@ -4,6 +4,21 @@ import { protect, requireRole } from '../middleware/auth.js';
 import Course from '../models/Course.js';
 
 const router = express.Router();
+// GET /api/comments/trainer/summary — doubt counts per course, for the logged-in trainer
+router.get('/trainer/summary', protect, requireRole('trainer'), async (req, res) => {
+  try {
+    const courses = await Course.find({ trainer: req.user._id }).select('_id');
+    const courseIds = courses.map((c) => c._id);
+    const counts = await Comment.aggregate([
+      { $match: { course: { $in: courseIds } } },
+      { $group: { _id: '$course', count: { $sum: 1 } } },
+    ]);
+    res.json(counts);
+  } catch (err) {
+    res.status(500).json({ message: 'Failed to fetch doubt summary', error: err.message });
+  }
+});
+
 
 // GET /api/comments/:courseId/:lessonId
 router.get('/:courseId/:lessonId', async (req, res) => {
@@ -38,19 +53,4 @@ router.post('/', protect, async (req, res) => {
     res.status(500).json({ message: 'Failed to post comment', error: err.message });
   }
 });
-// GET /api/comments/trainer/summary — doubt counts per course, for the logged-in trainer
-router.get('/trainer/summary', protect, requireRole('trainer'), async (req, res) => {
-  try {
-    const courses = await Course.find({ trainer: req.user._id }).select('_id');
-    const courseIds = courses.map((c) => c._id);
-    const counts = await Comment.aggregate([
-      { $match: { course: { $in: courseIds } } },
-      { $group: { _id: '$course', count: { $sum: 1 } } },
-    ]);
-    res.json(counts);
-  } catch (err) {
-    res.status(500).json({ message: 'Failed to fetch doubt summary', error: err.message });
-  }
-});
-
 export default router;
