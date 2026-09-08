@@ -8,7 +8,7 @@ const API_URL = 'https://capacity-connect-backend-wh7n.onrender.com/api';
 export default function LearningPage() {
   const { courseId, lessonId } = useParams();
   const nav = useNavigate();
-  const { token } = useApp();
+  const { token , role } = useApp();
 
   const [course, setCourse] = useState(null);
   const [enrollment, setEnrollment] = useState(null);
@@ -23,19 +23,21 @@ export default function LearningPage() {
     setLoading(true);
     setError('');
     try {
-      const [courseRes, enrollRes] = await Promise.all([
-        fetch(`${API_URL}/courses/${courseId}`),
-        fetch(`${API_URL}/enrollments/mine`, { headers: { Authorization: `Bearer ${token}` } }),
-      ]);
+      const courseRes = await fetch(`${API_URL}/courses/${courseId}`);
       const courseData = await courseRes.json();
       if (!courseRes.ok) throw new Error(courseData.message || 'Course not found');
       setCourse(courseData);
 
-      const enrollData = await enrollRes.json();
+      if (role === 'trainer') {
+        setEnrollment({ progressPct: 0, completedLessonIds: [] });
+      } else {
+        const enrollRes = await fetch(`${API_URL}/enrollments/mine`, { headers: { Authorization: `Bearer ${token}` } });
+        const enrollData = await enrollRes.json();
       if (!enrollRes.ok) throw new Error(enrollData.message || 'Failed to load enrollment');
       const mine = enrollData.find((e) => e.course?._id === courseId);
       if (!mine) throw new Error('You are not enrolled in this course.');
       setEnrollment(mine);
+}
     } catch (err) {
       setError(err.message);
     } finally {
@@ -173,9 +175,11 @@ useEffect(() => { fetchComments(); }, [fetchComments]);
 
           <div className="flex justify-between" style={{ marginTop: 20 }}>
             <button className="btn btn-outline" disabled={!prevLesson} onClick={() => prevLesson && nav(`/learn/${courseId}/${prevLesson._id}`)}>← Previous</button>
-            <button className="btn btn-accent" onClick={handleComplete} disabled={saving}>
-              {saving ? 'Saving…' : completedLessonIds.includes(current?._id) ? 'Next →' : 'Mark Complete & Continue →'}
-            </button>
+            {role !== 'trainer' && (
+              <button className="btn btn-accent" onClick={handleComplete} disabled={saving}>
+                {saving ? 'Saving…' : completedLessonIds.includes(current?._id) ? 'Next →' : 'Mark Complete & Continue →'}
+              </button>
+            )}
           </div>
 
           <div className="card card-pad" style={{ marginTop: 24 }}>
